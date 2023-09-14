@@ -37,13 +37,18 @@ func WriteMetrics(m runtime.MemStats) {
 	MetricsMap["StackSys"] = float64(m.StackSys)
 	MetricsMap["Sys"] = float64(m.Sys)
 	MetricsMap["TotalAlloc"] = float64(m.TotalAlloc)
-	MetricsMap["PollCount"] = MetricsMap["PollCount"] + 1
+	MetricsMap["PollCount"] = 1
 	MetricsMap["RandomValue"] = rand.Float64()
 }
 
 func UpdateMetricValue(metricType string, metricName string, value float64) {
+
 	if metricType == "counter" {
-		MetricsMap[metricName] += value
+		if metricName == "PollCount" {
+			MetricsMap[metricName] += 1
+		} else {
+			MetricsMap[metricName] += value
+		}
 	} else {
 		MetricsMap[metricName] = value
 	}

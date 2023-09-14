@@ -32,7 +32,6 @@ func ValueHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Метод не разрешен", http.StatusMethodNotAllowed)
 		return
 	}
-	// Разбираем URL-параметры
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) != 4 {
 		http.Error(w, "Неверный формат URL", http.StatusBadRequest)
@@ -49,18 +48,17 @@ func ValueHandler(w http.ResponseWriter, r *http.Request) {
 
 	mu.Lock()
 	value, err := storage.CheckMetricByName(metricName)
+	mu.Unlock()
 	if err != nil {
 		http.Error(w, "Неверное имя метрики", http.StatusNotFound)
 		return
 	}
 	fmt.Fprintf(w, "%v\n", value)
-	mu.Unlock()
 
 }
 
 func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
-	// Разбираем URL-параметры
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) != 5 {
 		http.Error(w, "Неверный формат URL", http.StatusBadRequest)
@@ -85,7 +83,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	mu.Lock()
 	storage.UpdateMetricValue(metricType, metricName, value)
 	mu.Unlock()
-	// Возвращаем успешный ответ
+
 	fmt.Fprintf(w, "Метрика успешно принята: %s/%s/%s\n", metricType, metricName, metricValue)
 }
 

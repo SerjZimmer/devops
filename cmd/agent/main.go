@@ -20,9 +20,10 @@ func main() {
 var mu sync.Mutex
 
 func monitoring(address string, pollInterval, reportInterval int) {
-	var m runtime.MemStats
+
 	go func() {
 		for {
+			var m runtime.MemStats
 			runtime.ReadMemStats(&m)
 			mu.Lock()
 			storage.WriteMetrics(m)

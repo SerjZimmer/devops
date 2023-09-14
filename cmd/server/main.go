@@ -20,11 +20,11 @@ var (
 )
 
 func main() {
+
 	config.FlagInit()
 
 	go func() {
-		r := mRouter()
-		http.Handle("/", r)
+		mRouter()
 		if err := run(); err != nil {
 			panic(err)
 		}
@@ -36,7 +36,6 @@ func main() {
 
 		close(shutdownChan)
 	}()
-	time.Sleep(time.Second)
 
 	<-shutdownChan
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -71,11 +70,11 @@ func run() error {
 	return nil
 }
 
-func mRouter() *mux.Router {
+func mRouter() {
 	r := mux.NewRouter()
 
 	r.HandleFunc("/update/{metricType}/{metricName}/{metricValue}", api.UpdateHandler).Methods("POST")
 	r.HandleFunc("/value/{metricType}/{metricName}", api.ValueHandler).Methods("GET")
 	r.HandleFunc("/", api.ValueListHandler).Methods("GET")
-	return r
+	http.Handle("/", r)
 }
