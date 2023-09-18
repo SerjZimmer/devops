@@ -1,8 +1,7 @@
-package main
+package api
 
 import (
 	"errors"
-	"github.com/SerjZimmer/devops/internal/api"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
@@ -20,7 +19,7 @@ func TestUpdateHandlerBadRequest(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	// Call your updateHandler
-	api.UpdateHandler(rr, req)
+	UpdateHandler(rr, req)
 
 	// Check if the response status code is http.StatusBadRequest
 	assert.Equal(t, http.StatusBadRequest, rr.Code)
@@ -50,7 +49,7 @@ func TestUpdateHandler(t *testing.T) {
 			}
 
 			rr := httptest.NewRecorder()
-			handler := http.HandlerFunc(api.UpdateHandler)
+			handler := http.HandlerFunc(UpdateHandler)
 
 			handler.ServeHTTP(rr, req)
 
@@ -60,20 +59,15 @@ func TestUpdateHandler(t *testing.T) {
 }
 
 func TestValueListHandler(t *testing.T) {
-	// Создаем фейковый HTTP-запрос
 	req, err := http.NewRequest("GET", "/", nil)
 	assert.NoError(t, err)
 
-	// Создаем фейковый HTTP-ответ
 	w := httptest.NewRecorder()
 
-	// Вызываем обработчик
-	api.ValueListHandler(w, req)
+	ValueListHandler(w, req)
 
-	// Проверяем, что статус ответа равен http.StatusOK (200)
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	// Проверяем, что содержимое ответа является HTML
 	assert.Contains(t, w.Body.String(), "<html>")
 	assert.Contains(t, w.Body.String(), "<h1>Все метрики</h1>")
 	assert.Contains(t, w.Body.String(), "</html>")
@@ -137,11 +131,37 @@ func TestValueHandler(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 
-			api.ValueHandler(rr, req)
+			ValueHandler(rr, req)
 
 			assert.Equal(t, tt.expectedStatus, rr.Code)
 			assert.Equal(t, tt.expectedBody, rr.Body.String())
 
+		})
+	}
+}
+
+func Test_parseNumeric(t *testing.T) {
+	tests := []struct {
+		input       string
+		expectedVal float64
+		expectedErr bool
+	}{
+		{"123.45", 123.45, false},
+		{"-67.89", -67.89, false},
+		{"not_a_number", 0, true},
+		{"", 0, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			val, err := parseNumeric(tt.input)
+
+			if tt.expectedErr {
+				assert.Error(t, err, "Expected an error for input %s", tt.input)
+			} else {
+				assert.NoError(t, err, "Expected no error for input %s", tt.input)
+				assert.Equal(t, tt.expectedVal, val, "Expected value %f for input %s", tt.expectedVal, tt.input)
+			}
 		})
 	}
 }
