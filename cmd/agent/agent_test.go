@@ -13,7 +13,7 @@ var (
 	sendMetricT        = func(metricType, metricName string, metricValue any, address string) {}
 )
 
-func TestSendMetric(t *testing.T) {
+func Test_sendMetric(t *testing.T) {
 	// Create a test HTTP server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -32,7 +32,7 @@ func TestSendMetric(t *testing.T) {
 	sendMetric(metricType, metricName, metricValue, "localhost:8080")
 }
 
-func TestSendMetricCounter(t *testing.T) {
+func Test_sendMetricCounter(t *testing.T) {
 	// Create a test HTTP server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -51,7 +51,7 @@ func TestSendMetricCounter(t *testing.T) {
 	sendMetric(metricType, metricName, metricValue, "localhost:8080")
 }
 
-func TestMonitoring(t *testing.T) {
+func Test_monitoring(t *testing.T) {
 	// Create a test HTTP server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

@@ -8,17 +8,19 @@ import (
 	"strings"
 )
 
+var strg = storage.NewMetricsStorage()
+
 func GetMetricsList(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
-	keys := storage.SortMetricByName()
+	keys := strg.SortMetricByName()
 
 	// Генерируем HTML страницу
 	fmt.Fprintf(w, "<html><head><title>Metrics</title></head><body>")
 	fmt.Fprintf(w, "<h1>Все метрики</h1>")
 	fmt.Fprintf(w, "<ul>")
 	for _, key := range keys {
-		fmt.Fprintf(w, "<li>%s: %v</li>", key, storage.MetricsMap[key])
+		fmt.Fprintf(w, "<li>%s: %v</li>", key, strg.MetricsMap[key])
 	}
 	fmt.Fprintf(w, "</ul></body></html>")
 }
@@ -43,7 +45,7 @@ func GetMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	value, err := storage.CheckMetricByName(metricName)
+	value, err := strg.CheckMetricByName(metricName)
 	if err != nil {
 		http.Error(w, "Неверное имя метрики", http.StatusNotFound)
 		return
@@ -75,7 +77,7 @@ func UpdateMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	storage.UpdateMetricValue(metricType, metricName, value)
+	strg.UpdateMetricValue(metricType, metricName, value)
 
 	fmt.Fprintf(w, "Метрика успешно принята: %s/%s/%s\n", metricType, metricName, metricValue)
 }

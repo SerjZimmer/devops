@@ -10,19 +10,20 @@ import (
 )
 
 func main() {
+	strg := storage.NewMetricsStorage()
 	config.FlagInit()
 	for {
-		monitoring(config.Address, config.PollInterval, config.ReportInterval)
+		monitoring(strg, config.Address, config.PollInterval, config.ReportInterval)
 	}
 }
 
 var mu sync.Mutex
 
-func monitoring(address string, pollInterval, reportInterval int) {
+func monitoring(strg *storage.MetricsStorage, address string, pollInterval, reportInterval int) {
 
 	go func() {
 		for {
-			storage.WriteMetrics()
+			strg.WriteMetrics()
 			time.Sleep(time.Duration(pollInterval) * time.Second)
 		}
 	}()
@@ -30,7 +31,7 @@ func monitoring(address string, pollInterval, reportInterval int) {
 	go func() {
 		for {
 			mu.Lock()
-			for metricName, metricValue := range storage.MetricsMap {
+			for metricName, metricValue := range strg.MetricsMap {
 				if metricName != "PollCount" {
 					go sendMetric("gauge", metricName, metricValue, address)
 				} else {
