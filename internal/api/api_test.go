@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestUpdateHandlerBadRequest(t *testing.T) {
+func Test_UpdateMetric_BadRequest(t *testing.T) {
 	// Create a test HTTP request with an invalid URL
 	req, err := http.NewRequest("GET", "/update/invalid/url", nil)
 	if err != nil {
@@ -19,7 +19,7 @@ func TestUpdateHandlerBadRequest(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	// Call your updateHandler
-	UpdateHandler(rr, req)
+	UpdateMetric(rr, req)
 
 	// Check if the response status code is http.StatusBadRequest
 	assert.Equal(t, http.StatusBadRequest, rr.Code)
@@ -28,7 +28,7 @@ func TestUpdateHandlerBadRequest(t *testing.T) {
 	expectedResponse := "Неверный формат URL\n"
 	assert.Equal(t, expectedResponse, rr.Body.String())
 }
-func TestUpdateHandler(t *testing.T) {
+func Test_UpdateMetric(t *testing.T) {
 	testCases := []struct {
 		name     string
 		input    string
@@ -49,7 +49,7 @@ func TestUpdateHandler(t *testing.T) {
 			}
 
 			rr := httptest.NewRecorder()
-			handler := http.HandlerFunc(UpdateHandler)
+			handler := http.HandlerFunc(UpdateMetric)
 
 			handler.ServeHTTP(rr, req)
 
@@ -58,13 +58,13 @@ func TestUpdateHandler(t *testing.T) {
 	}
 }
 
-func TestValueListHandler(t *testing.T) {
+func Test_GetMetricsList(t *testing.T) {
 	req, err := http.NewRequest("GET", "/", nil)
 	assert.NoError(t, err)
 
 	w := httptest.NewRecorder()
 
-	ValueListHandler(w, req)
+	GetMetricsList(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -73,7 +73,7 @@ func TestValueListHandler(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "</html>")
 }
 
-func TestValueHandler(t *testing.T) {
+func Test_GetMetric(t *testing.T) {
 	tests := []struct {
 		name           string
 		method         string
@@ -131,7 +131,7 @@ func TestValueHandler(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 
-			ValueHandler(rr, req)
+			GetMetric(rr, req)
 
 			assert.Equal(t, tt.expectedStatus, rr.Code)
 			assert.Equal(t, tt.expectedBody, rr.Body.String())

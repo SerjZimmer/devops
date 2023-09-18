@@ -5,7 +5,6 @@ import (
 	"github.com/SerjZimmer/devops/internal/config"
 	"github.com/SerjZimmer/devops/internal/storage"
 	"net/http"
-	"runtime"
 	"sync"
 	"time"
 )
@@ -23,11 +22,7 @@ func monitoring(address string, pollInterval, reportInterval int) {
 
 	go func() {
 		for {
-			var m runtime.MemStats
-			runtime.ReadMemStats(&m)
-			mu.Lock()
-			storage.WriteMetrics(m)
-			mu.Unlock()
+			storage.WriteMetrics()
 			time.Sleep(time.Duration(pollInterval) * time.Second)
 		}
 	}()

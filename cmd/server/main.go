@@ -73,8 +73,8 @@ func run() error {
 func mRouter() {
 	r := mux.NewRouter()
 
-	r.HandleFunc("/update/{metricType}/{metricName}/{metricValue}", api.UpdateHandler).Methods("POST")
-	r.HandleFunc("/value/{metricType}/{metricName}", api.ValueHandler).Methods("GET")
-	r.HandleFunc("/", api.ValueListHandler).Methods("GET")
+	r.HandleFunc("/update/{metricType}/{metricName}/{metricValue}", api.UpdateMetric).Methods("POST")
+	r.HandleFunc("/value/{metricType}/{metricName}", api.GetMetric).Methods("GET")
+	r.HandleFunc("/", api.GetMetricsList).Methods("GET")
 	http.Handle("/", r)
 }

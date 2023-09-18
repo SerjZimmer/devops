@@ -6,12 +6,9 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"sync"
 )
 
-var mu sync.Mutex
-
-func ValueListHandler(w http.ResponseWriter, r *http.Request) {
+func GetMetricsList(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
 	keys := storage.SortMetricByName()
@@ -26,7 +23,7 @@ func ValueListHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "</ul></body></html>")
 }
 
-func ValueHandler(w http.ResponseWriter, r *http.Request) {
+func GetMetric(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != http.MethodGet {
 		http.Error(w, "Метод не разрешен", http.StatusMethodNotAllowed)
@@ -46,9 +43,7 @@ func ValueHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mu.Lock()
 	value, err := storage.CheckMetricByName(metricName)
-	mu.Unlock()
 	if err != nil {
 		http.Error(w, "Неверное имя метрики", http.StatusNotFound)
 		return
@@ -57,7 +52,7 @@ func ValueHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func UpdateHandler(w http.ResponseWriter, r *http.Request) {
+func UpdateMetric(w http.ResponseWriter, r *http.Request) {
 
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) != 5 {
@@ -80,9 +75,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mu.Lock()
 	storage.UpdateMetricValue(metricType, metricName, value)
-	mu.Unlock()
 
 	fmt.Fprintf(w, "Метрика успешно принята: %s/%s/%s\n", metricType, metricName, metricValue)
 }

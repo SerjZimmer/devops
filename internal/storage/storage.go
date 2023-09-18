@@ -5,11 +5,16 @@ import (
 	"math/rand"
 	"runtime"
 	"sort"
+	"sync"
 )
 
 var MetricsMap = map[string]float64{}
+var mu sync.Mutex
 
-func WriteMetrics(m runtime.MemStats) {
+func WriteMetrics() {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	mu.Lock()
 	MetricsMap["Alloc"] = float64(m.Alloc)
 	MetricsMap["BuckHashSys"] = float64(m.BuckHashSys)
 	MetricsMap["Frees"] = float64(m.Frees)
@@ -39,10 +44,12 @@ func WriteMetrics(m runtime.MemStats) {
 	MetricsMap["TotalAlloc"] = float64(m.TotalAlloc)
 	MetricsMap["PollCount"] = 1
 	MetricsMap["RandomValue"] = rand.Float64()
+	mu.Unlock()
 }
 
 func UpdateMetricValue(metricType string, metricName string, value float64) {
 
+	mu.Lock()
 	if metricType == "counter" {
 		if metricName == "PollCount" {
 			MetricsMap[metricName] += 1
@@ -52,9 +59,12 @@ func UpdateMetricValue(metricType string, metricName string, value float64) {
 	} else {
 		MetricsMap[metricName] = value
 	}
+	mu.Unlock()
 }
 func CheckMetricByName(metricName string) (float64, error) {
+	mu.Lock()
 	value, exists := MetricsMap[metricName]
+	mu.Unlock()
 	if exists {
 		return value, nil
 	}
@@ -63,9 +73,11 @@ func CheckMetricByName(metricName string) (float64, error) {
 
 func SortMetricByName() []string {
 	var keys []string
+	mu.Lock()
 	for key := range MetricsMap {
 		keys = append(keys, key)
 	}
+	mu.Unlock()
 	sort.Strings(keys)
 	return keys
 }
