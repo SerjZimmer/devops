@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/SerjZimmer/devops/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +13,7 @@ var (
 	originalSendMetric = sendMetric
 	sendMetricT        = func(metricType, metricName string, metricValue any, address string) {}
 )
+var strg = storage.NewMetricsStorage()
 
 func Test_sendMetric(t *testing.T) {
 	// Create a test HTTP server
@@ -66,5 +68,5 @@ func Test_monitoring(t *testing.T) {
 		assert.Equal(t, "metricName", metricName)
 		// Check metricValue against expected values
 	}
-	go monitoring("localhost:8080", 10, 10)
+	go monitoring(strg, "localhost:8080", 10, 10)
 }
