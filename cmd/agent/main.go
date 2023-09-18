@@ -5,7 +5,6 @@ import (
 	"github.com/SerjZimmer/devops/internal/config"
 	"github.com/SerjZimmer/devops/internal/storage"
 	"net/http"
-	"sync"
 	"time"
 )
 
@@ -16,8 +15,6 @@ func main() {
 		monitoring(strg, config.Address, config.PollInterval, config.ReportInterval)
 	}
 }
-
-var mu sync.Mutex
 
 func monitoring(strg *storage.MetricsStorage, address string, pollInterval, reportInterval int) {
 
@@ -30,7 +27,7 @@ func monitoring(strg *storage.MetricsStorage, address string, pollInterval, repo
 
 	go func() {
 		for {
-			mu.Lock()
+			strg.Mu.Lock()
 			for metricName, metricValue := range strg.MetricsMap {
 				if metricName != "PollCount" {
 					go sendMetric("gauge", metricName, metricValue, address)
@@ -38,7 +35,7 @@ func monitoring(strg *storage.MetricsStorage, address string, pollInterval, repo
 					go sendMetric("counter", metricName, int64(metricValue), address)
 				}
 			}
-			mu.Unlock()
+			strg.Mu.Unlock()
 
 			time.Sleep(time.Duration(reportInterval) * time.Second)
 		}

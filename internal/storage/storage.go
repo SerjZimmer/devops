@@ -9,7 +9,7 @@ import (
 )
 
 type MetricsStorage struct {
-	mu         sync.Mutex
+	Mu         sync.Mutex
 	MetricsMap map[string]float64
 }
 
@@ -22,7 +22,7 @@ func NewMetricsStorage() *MetricsStorage {
 func (s *MetricsStorage) WriteMetrics() {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
-	s.mu.Lock()
+	s.Mu.Lock()
 	s.MetricsMap["Alloc"] = float64(m.Alloc)
 	s.MetricsMap["BuckHashSys"] = float64(m.BuckHashSys)
 	s.MetricsMap["Frees"] = float64(m.Frees)
@@ -52,12 +52,12 @@ func (s *MetricsStorage) WriteMetrics() {
 	s.MetricsMap["TotalAlloc"] = float64(m.TotalAlloc)
 	s.MetricsMap["PollCount"] = 1
 	s.MetricsMap["RandomValue"] = rand.Float64()
-	s.mu.Unlock()
+	s.Mu.Unlock()
 }
 
 func (s *MetricsStorage) UpdateMetricValue(metricType string, metricName string, value float64) {
 
-	s.mu.Lock()
+	s.Mu.Lock()
 	if metricType == "counter" {
 		if metricName == "PollCount" {
 			s.MetricsMap[metricName] += 1
@@ -67,12 +67,12 @@ func (s *MetricsStorage) UpdateMetricValue(metricType string, metricName string,
 	} else {
 		s.MetricsMap[metricName] = value
 	}
-	s.mu.Unlock()
+	s.Mu.Unlock()
 }
 func (s *MetricsStorage) CheckMetricByName(metricName string) (float64, error) {
-	s.mu.Lock()
+	s.Mu.Lock()
 	value, exists := s.MetricsMap[metricName]
-	s.mu.Unlock()
+	s.Mu.Unlock()
 	if exists {
 		return value, nil
 	}
@@ -81,11 +81,11 @@ func (s *MetricsStorage) CheckMetricByName(metricName string) (float64, error) {
 
 func (s *MetricsStorage) SortMetricByName() []string {
 	var keys []string
-	s.mu.Lock()
+	s.Mu.Lock()
 	for key := range s.MetricsMap {
 		keys = append(keys, key)
 	}
-	s.mu.Unlock()
+	s.Mu.Unlock()
 	sort.Strings(keys)
 	return keys
 }
