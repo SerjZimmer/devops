@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"github.com/SerjZimmer/devops/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
@@ -9,6 +10,7 @@ import (
 )
 
 func Test_UpdateMetric_BadRequest(t *testing.T) {
+
 	// Create a test HTTP request with an invalid URL
 	req, err := http.NewRequest("GET", "/update/invalid/url", nil)
 	if err != nil {
@@ -19,7 +21,8 @@ func Test_UpdateMetric_BadRequest(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	// Call your updateHandler
-	UpdateMetric(rr, req)
+	handler := NewHandler(storage.NewMetricsStorage())
+	handler.UpdateMetric(rr, req)
 
 	// Check if the response status code is http.StatusBadRequest
 	assert.Equal(t, http.StatusBadRequest, rr.Code)
@@ -29,6 +32,7 @@ func Test_UpdateMetric_BadRequest(t *testing.T) {
 	assert.Equal(t, expectedResponse, rr.Body.String())
 }
 func Test_UpdateMetric(t *testing.T) {
+	handler := NewHandler(storage.NewMetricsStorage())
 	testCases := []struct {
 		name     string
 		input    string
@@ -49,7 +53,7 @@ func Test_UpdateMetric(t *testing.T) {
 			}
 
 			rr := httptest.NewRecorder()
-			handler := http.HandlerFunc(UpdateMetric)
+			handler := http.HandlerFunc(handler.UpdateMetric)
 
 			handler.ServeHTTP(rr, req)
 
@@ -59,12 +63,14 @@ func Test_UpdateMetric(t *testing.T) {
 }
 
 func Test_GetMetricsList(t *testing.T) {
+	handler := NewHandler(storage.NewMetricsStorage())
+
 	req, err := http.NewRequest("GET", "/", nil)
 	assert.NoError(t, err)
 
 	w := httptest.NewRecorder()
 
-	GetMetricsList(w, req)
+	handler.GetMetricsList(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -74,6 +80,8 @@ func Test_GetMetricsList(t *testing.T) {
 }
 
 func Test_GetMetric(t *testing.T) {
+	handler := NewHandler(storage.NewMetricsStorage())
+
 	tests := []struct {
 		name           string
 		method         string
@@ -131,7 +139,7 @@ func Test_GetMetric(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 
-			GetMetric(rr, req)
+			handler.GetMetric(rr, req)
 
 			assert.Equal(t, tt.expectedStatus, rr.Code)
 			assert.Equal(t, tt.expectedBody, rr.Body.String())
