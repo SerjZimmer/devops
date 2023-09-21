@@ -10,8 +10,8 @@ import (
 
 func main() {
 	strg := storage.NewMetricsStorage()
-	config.FlagInit()
-	monitoring(strg, config.Address, config.PollInterval, config.ReportInterval)
+	c := config.NewConfig()
+	monitoring(strg, c.Address, c.PollInterval, c.ReportInterval)
 }
 
 func monitoring(strg *storage.MetricsStorage, address string, pollInterval, reportInterval int) {

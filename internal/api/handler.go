@@ -2,30 +2,42 @@ package api
 
 import (
 	"fmt"
-	"github.com/SerjZimmer/devops/internal/storage"
 	"net/http"
 	"strconv"
 	"strings"
 )
 
-var strg = storage.NewMetricsStorage()
+type metricsStorage interface {
+	GetMetricByName(metricName string) (float64, error)
+	UpdateMetricValue(metricType string, metricName string, value float64)
+	SortMetricByName() []string
+	GetAllMetrics() string
+}
 
-func GetMetricsList(w http.ResponseWriter, r *http.Request) {
+type Handler struct {
+	stor metricsStorage
+}
+
+func NewHandler(stor metricsStorage) *Handler {
+	return &Handler{
+		stor: stor,
+	}
+}
+
+func (s Handler) GetMetricsList(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-
-	keys := strg.SortMetricByName()
 
 	// Генерируем HTML страницу
 	fmt.Fprintf(w, "<html><head><title>Metrics</title></head><body>")
 	fmt.Fprintf(w, "<h1>Все метрики</h1>")
 	fmt.Fprintf(w, "<ul>")
-	for _, key := range keys {
-		fmt.Fprintf(w, "<li>%s: %v</li>", key, strg.MetricsMap[key])
-	}
+
+	fmt.Fprintf(w, "<li> %v </li>", s.stor.GetAllMetrics())
+
 	fmt.Fprintf(w, "</ul></body></html>")
 }
 
-func GetMetric(w http.ResponseWriter, r *http.Request) {
+func (s Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != http.MethodGet {
 		http.Error(w, "Метод не разрешен", http.StatusMethodNotAllowed)
@@ -45,7 +57,7 @@ func GetMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	value, err := strg.CheckMetricByName(metricName)
+	value, err := s.stor.GetMetricByName(metricName)
 	if err != nil {
 		http.Error(w, "Неверное имя метрики", http.StatusNotFound)
 		return
@@ -54,7 +66,7 @@ func GetMetric(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func UpdateMetric(w http.ResponseWriter, r *http.Request) {
+func (s Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) != 5 {
@@ -77,7 +89,7 @@ func UpdateMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	strg.UpdateMetricValue(metricType, metricName, value)
+	s.stor.UpdateMetricValue(metricType, metricName, value)
 
 	fmt.Fprintf(w, "Метрика успешно принята: %s/%s/%s\n", metricType, metricName, metricValue)
 }

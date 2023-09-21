@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/SerjZimmer/devops/internal/api"
 	"github.com/SerjZimmer/devops/internal/config"
+	"github.com/SerjZimmer/devops/internal/storage"
 	"github.com/gorilla/mux"
 	"net/http"
 	"os"
@@ -21,11 +22,12 @@ var (
 
 func main() {
 
-	config.FlagInit()
+	c := config.NewConfig()
+	handler := api.NewHandler(storage.NewMetricsStorage())
 
 	go func() {
-		mRouter()
-		if err := run(); err != nil {
+		mRouter(handler)
+		if err := run(c); err != nil {
 			panic(err)
 		}
 	}()
@@ -47,10 +49,10 @@ func main() {
 	os.Exit(0)
 }
 
-func run() error {
-	fmt.Printf("Сервер запущен на %v\n", config.Address)
+func run(c *config.Config) error {
+	fmt.Printf("Сервер запущен на %v\n", c.Address)
 
-	server = &http.Server{Addr: config.Address}
+	server = &http.Server{Addr: c.Address}
 	go func() {
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			panic(err)
@@ -70,11 +72,11 @@ func run() error {
 	return nil
 }
 
-func mRouter() {
+func mRouter(handler *api.Handler) {
 	r := mux.NewRouter()
 
-	r.HandleFunc("/update/{metricType}/{metricName}/{metricValue}", api.UpdateMetric).Methods("POST")
-	r.HandleFunc("/value/{metricType}/{metricName}", api.GetMetric).Methods("GET")
-	r.HandleFunc("/", api.GetMetricsList).Methods("GET")
+	r.HandleFunc("/update/{metricType}/{metricName}/{metricValue}", handler.UpdateMetric).Methods("POST")
+	r.HandleFunc("/value/{metricType}/{metricName}", handler.GetMetric).Methods("GET")
+	r.HandleFunc("/", handler.GetMetricsList).Methods("GET")
 	http.Handle("/", r)
 }

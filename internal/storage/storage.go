@@ -69,7 +69,7 @@ func (s *MetricsStorage) UpdateMetricValue(metricType string, metricName string,
 	}
 	s.Mu.Unlock()
 }
-func (s *MetricsStorage) CheckMetricByName(metricName string) (float64, error) {
+func (s *MetricsStorage) GetMetricByName(metricName string) (float64, error) {
 	s.Mu.Lock()
 	value, exists := s.MetricsMap[metricName]
 	s.Mu.Unlock()
@@ -88,4 +88,13 @@ func (s *MetricsStorage) SortMetricByName() []string {
 	s.Mu.Unlock()
 	sort.Strings(keys)
 	return keys
+}
+
+func (s *MetricsStorage) GetAllMetrics() string {
+	keys := s.SortMetricByName()
+	var result string
+	for _, key := range keys {
+		result += fmt.Sprintf("%v/%v\n", key, s.MetricsMap[key])
+	}
+	return result
 }

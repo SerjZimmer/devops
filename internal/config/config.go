@@ -7,16 +7,23 @@ import (
 	"strconv"
 )
 
-var (
+type Config struct {
 	Address        string
 	PollInterval   int
 	ReportInterval int
-)
+}
 
-func FlagInit() {
-	flag.StringVar(&Address, "a", getEnv("ADDRESS", "localhost:8080"), "Адрес эндпоинта HTTP-сервера")
-	flag.IntVar(&ReportInterval, "r", getEnvAsInt("REPORT_INTERVAL", 10), "Частота отправки метрик на сервер")
-	flag.IntVar(&PollInterval, "p", getEnvAsInt("POLL_INTERVAL", 2), "Частота опроса метрик из пакета runtime")
+func NewConfig() *Config {
+	config := &Config{
+		Address:        getEnv("ADDRESS", "localhost:8080"),
+		PollInterval:   getEnvAsInt("POLL_INTERVAL", 2),
+		ReportInterval: getEnvAsInt("REPORT_INTERVAL", 10),
+	}
+
+	flag.StringVar(&config.Address, "a", getEnv("ADDRESS", "localhost:8080"), "Адрес эндпоинта HTTP-сервера")
+	flag.IntVar(&config.ReportInterval, "r", getEnvAsInt("REPORT_INTERVAL", 10), "Частота отправки метрик на сервер")
+	flag.IntVar(&config.PollInterval, "p", getEnvAsInt("POLL_INTERVAL", 2), "Частота опроса метрик из пакета runtime")
+
 	flag.VisitAll(func(f *flag.Flag) {
 		if f.Name == "a" || f.Name == "r" || f.Name == "p" {
 			return
@@ -26,6 +33,7 @@ func FlagInit() {
 		os.Exit(1)
 	})
 	flag.Parse()
+	return config
 }
 
 func getEnv(key, defaultValue string) string {
