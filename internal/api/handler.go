@@ -8,8 +8,8 @@ import (
 )
 
 type metricsStorage interface {
-	GetMetricByName(metricName string) (float64, error)
-	UpdateMetricValue(metricType string, metricName string, value float64)
+	GetMetricByName(metricName string) (float64, error)                    //возвращать структуру
+	UpdateMetricValue(metricType string, metricName string, value float64) // принимать структуру
 	SortMetricByName() []string
 	GetAllMetrics() string
 }

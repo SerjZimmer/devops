@@ -9,7 +9,7 @@ import (
 )
 
 type MetricsStorage struct {
-	Mu         sync.Mutex
+	Mu         sync.RWMutex
 	MetricsMap map[string]float64
 }
 
@@ -70,9 +70,9 @@ func (s *MetricsStorage) UpdateMetricValue(metricType string, metricName string,
 	s.Mu.Unlock()
 }
 func (s *MetricsStorage) GetMetricByName(metricName string) (float64, error) {
-	s.Mu.Lock()
+	s.Mu.RLock()
 	value, exists := s.MetricsMap[metricName]
-	s.Mu.Unlock()
+	s.Mu.RUnlock()
 	if exists {
 		return value, nil
 	}
@@ -81,11 +81,11 @@ func (s *MetricsStorage) GetMetricByName(metricName string) (float64, error) {
 
 func (s *MetricsStorage) SortMetricByName() []string {
 	var keys []string
-	s.Mu.Lock()
+	s.Mu.RLock()
 	for key := range s.MetricsMap {
 		keys = append(keys, key)
 	}
-	s.Mu.Unlock()
+	s.Mu.RUnlock()
 	sort.Strings(keys)
 	return keys
 }

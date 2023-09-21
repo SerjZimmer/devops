@@ -23,7 +23,8 @@ var (
 func main() {
 
 	c := config.NewConfig()
-	handler := api.NewHandler(storage.NewMetricsStorage())
+	st := storage.NewMetricsStorage()
+	handler := api.NewHandler(st)
 
 	go func() {
 		mRouter(handler)
