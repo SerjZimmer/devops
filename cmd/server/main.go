@@ -63,7 +63,6 @@ func run(c *config.Config) error {
 	<-shutdownChan
 	fmt.Println("Завершение работы сервера...")
 
-	// Завершаем работу сервера
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := server.Shutdown(ctx); err != nil {
