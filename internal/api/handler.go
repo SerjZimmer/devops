@@ -3,11 +3,30 @@ package api
 import (
 	"fmt"
 	"go.uber.org/zap"
+	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 )
+
+const metricsListTemplate = `
+<html>
+<head>
+    <title>Metrics</title>
+</head>
+<body>
+    <h1>Все метрики</h1>
+    <ul>
+        {{range .Metrics}}
+        <li>{{.}}</li>
+        {{end}}
+    </ul>
+</body>
+</html>
+`
+
+var tmpl = template.Must(template.New("metricsList").Parse(metricsListTemplate))
 
 type metricsStorage interface {
 	GetMetricByName(metricName string) (float64, error)                    //возвращать структуру
@@ -65,13 +84,20 @@ func (s *Handler) LoggingMiddleware(next http.Handler) http.Handler {
 func (s Handler) GetMetricsList(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
-	fmt.Fprintf(w, "<html><head><title>Metrics</title></head><body>")
-	fmt.Fprintf(w, "<h1>Все метрики</h1>")
-	fmt.Fprintf(w, "<ul>")
+	metricsString := s.stor.GetAllMetrics()
 
-	fmt.Fprintf(w, "<li> %v </li>", s.stor.GetAllMetrics())
+	metrics := strings.Split(metricsString, "\n")
 
-	fmt.Fprintf(w, "</ul></body></html>")
+	data := struct {
+		Metrics []string
+	}{
+		Metrics: metrics,
+	}
+
+	if err := tmpl.Execute(w, data); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 func (s Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
