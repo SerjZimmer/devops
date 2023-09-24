@@ -20,7 +20,14 @@ type Handler struct {
 	stor   metricsStorage
 	logger *zap.Logger
 }
+type responseWriterWithStatus struct {
+	http.ResponseWriter
+	status int
+}
 
+func (rw *responseWriterWithStatus) Status() int {
+	return rw.status
+}
 func NewHandler(stor metricsStorage) *Handler {
 	config := zap.NewProductionConfig()
 	config.Level = zap.NewAtomicLevelAt(zap.InfoLevel)
@@ -38,19 +45,16 @@ func NewHandler(stor metricsStorage) *Handler {
 func (s *Handler) LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		startTime := time.Now()
-		// Создаем logger для текущего запроса с полями, которые вы хотите логировать
+
 		logger := s.logger.With(
 			zap.String("URI", r.RequestURI),
 			zap.String("Method", r.Method),
 		)
 
-		// Создаем обертку ResponseWriter, которая позволит нам получить статус ответа
 		rw := &responseWriterWithStatus{ResponseWriter: w, status: http.StatusOK}
 
-		// Вызываем следующий обработчик
 		next.ServeHTTP(rw, r)
 
-		// Логируем информацию о запросе и ответе на уровне Info
 		logger.Info("Request processed",
 			zap.Int("Status", rw.status),
 			zap.Duration("Duration", time.Since(startTime)),
@@ -58,21 +62,9 @@ func (s *Handler) LoggingMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// responseWriterWithStatus - это обертка для ResponseWriter с поддержкой метода Status()
-type responseWriterWithStatus struct {
-	http.ResponseWriter
-	status int
-}
-
-// Status возвращает статус ответа
-func (rw *responseWriterWithStatus) Status() int {
-	return rw.status
-}
-
 func (s Handler) GetMetricsList(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
-	// Генерируем HTML страницу
 	fmt.Fprintf(w, "<html><head><title>Metrics</title></head><body>")
 	fmt.Fprintf(w, "<h1>Все метрики</h1>")
 	fmt.Fprintf(w, "<ul>")
