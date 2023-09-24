@@ -77,6 +77,7 @@ func run(c *config.Config) error {
 
 func mRouter(handler *api.Handler) {
 	r := mux.NewRouter()
+
 	r.Use(handler.LoggingMiddleware)
 
 	r.Use(handler.LoggingMiddleware, gzip.GzipMiddleware)
