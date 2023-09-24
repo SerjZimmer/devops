@@ -75,6 +75,7 @@ func run(c *config.Config) error {
 
 func mRouter(handler *api.Handler) {
 	r := mux.NewRouter()
+	r.Use(handler.LoggingMiddleware)
 
 	r.HandleFunc("/update/{metricType}/{metricName}/{metricValue}", handler.UpdateMetric).Methods("POST")
 	r.HandleFunc("/value/{metricType}/{metricName}", handler.GetMetric).Methods("GET")

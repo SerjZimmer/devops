@@ -2,9 +2,11 @@ package api
 
 import (
 	"fmt"
+	"go.uber.org/zap"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type metricsStorage interface {
@@ -15,13 +17,56 @@ type metricsStorage interface {
 }
 
 type Handler struct {
-	stor metricsStorage
+	stor   metricsStorage
+	logger *zap.Logger
 }
 
 func NewHandler(stor metricsStorage) *Handler {
-	return &Handler{
-		stor: stor,
+	config := zap.NewProductionConfig()
+	config.Level = zap.NewAtomicLevelAt(zap.InfoLevel)
+
+	logger, err := config.Build()
+	if err != nil {
+		panic(fmt.Sprintf("failed to create logger: %v", err))
 	}
+	return &Handler{
+		stor:   stor,
+		logger: logger,
+	}
+}
+
+func (s *Handler) LoggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		startTime := time.Now()
+		// Создаем logger для текущего запроса с полями, которые вы хотите логировать
+		logger := s.logger.With(
+			zap.String("URI", r.RequestURI),
+			zap.String("Method", r.Method),
+		)
+
+		// Создаем обертку ResponseWriter, которая позволит нам получить статус ответа
+		rw := &responseWriterWithStatus{ResponseWriter: w, status: http.StatusOK}
+
+		// Вызываем следующий обработчик
+		next.ServeHTTP(rw, r)
+
+		// Логируем информацию о запросе и ответе на уровне Info
+		logger.Info("Request processed",
+			zap.Int("Status", rw.status),
+			zap.Duration("Duration", time.Since(startTime)),
+		)
+	})
+}
+
+// responseWriterWithStatus - это обертка для ResponseWriter с поддержкой метода Status()
+type responseWriterWithStatus struct {
+	http.ResponseWriter
+	status int
+}
+
+// Status возвращает статус ответа
+func (rw *responseWriterWithStatus) Status() int {
+	return rw.status
 }
 
 func (s Handler) GetMetricsList(w http.ResponseWriter, r *http.Request) {
