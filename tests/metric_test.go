@@ -11,67 +11,41 @@ import (
 	"testing"
 )
 
-func TestUpdateMetricJson(t *testing.T) {
-
+func Test_UpdateMetric(t *testing.T) {
+	handler := api.NewHandler(storage.NewMetricsStorage())
 	testCases := []struct {
-		Name           string
-		RequestBody    string
-		ExpectedStatus int
-		ExpectedBody   string
+		name     string
+		input    string
+		expected string
 	}{
-		{
-			Name:           "Valid JSON",
-			RequestBody:    `{"type": "gauge", "id": "metricName", "value": 123.45}`,
-			ExpectedStatus: http.StatusOK,
-			ExpectedBody:   "{\"id\":\"metricName\",\"type\":\"gauge\",\"value\":123.45}",
-		},
-		{
-			Name:           "Valid JSON",
-			RequestBody:    `{"type": "counter", "id": "metricCounter", "delta": 123}`,
-			ExpectedStatus: http.StatusOK,
-			ExpectedBody:   "{\"id\":\"metricCounter\",\"type\":\"counter\",\"delta\":123}",
-		},
-		{
-			Name:           "Valid JSON",
-			RequestBody:    `{"type": "counter", "id": "PollCount"}`,
-			ExpectedStatus: http.StatusOK,
-			ExpectedBody:   "{\"id\":\"PollCount\",\"type\":\"counter\"}",
-		},
-		{
-			Name:           "Invalid JSON",
-			RequestBody:    `{"type": "invalid"}`,
-			ExpectedStatus: http.StatusBadRequest,
-			ExpectedBody:   "Некорректные данные в JSON\n",
-		},
-		{
-			Name:           "Invalid Metric Data",
-			RequestBody:    `{"type": "gauge", "id": "", "value": 123.45}`,
-			ExpectedStatus: http.StatusBadRequest,
-			ExpectedBody:   "Некорректные данные в JSON\n",
-		},
+		{"valid gauge input", `{"id": "metric1", "type": "gauge", "value": 3.14}`, "Метрика успешно принята: gauge/metric1/3.14\n"},
+		{"valid counter input", `{"id": "metric2", "type": "counter", "delta": 2}`, "Метрика успешно принята: counter/metric2/2\n"},
+		{"invalid JSON", `{"id": "metric3", "type": "gauge", "value": "invalid"}`, "Ошибка при разборе JSON\n"},
+		{"invalid metric type", `{"id": "metric4", "type": "invalid", "value": 1.23}`, "Неверный тип метрики\n"},
 	}
-	handler := api.NewHandler(storage.TestMetricStorage())
-	for _, tc := range testCases {
-		t.Run(tc.Name, func(t *testing.T) {
 
-			req, err := http.NewRequest("POST", "/update/", strings.NewReader(tc.RequestBody))
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Создаем POST-запрос с JSON-телом
+			reqBody := strings.NewReader(tc.input)
+			req, err := http.NewRequest("POST", "/update", reqBody)
 			if err != nil {
 				t.Fatal(err)
 			}
 			req.Header.Set("Content-Type", "application/json")
 
-			w := httptest.NewRecorder()
+			rr := httptest.NewRecorder()
+			h := http.HandlerFunc(handler.UpdateMetric)
 
-			handler.UpdateMetricJSON(w, req)
+			h.ServeHTTP(rr, req)
 
-			assert.Equal(t, tc.ExpectedStatus, w.Code)
-			assert.Equal(t, tc.ExpectedBody, w.Body.String())
+			assert.Equal(t, tc.expected, rr.Body.String())
 		})
 	}
 }
 
 func Test_GetMetricsList(t *testing.T) {
-	handler := api.NewHandler(storage.TestMetricStorage())
+	handler := api.NewHandler(storage.NewMetricsStorage())
 
 	req, err := http.NewRequest("GET", "/", nil)
 	assert.NoError(t, err)
@@ -88,7 +62,7 @@ func Test_GetMetricsList(t *testing.T) {
 }
 
 func Test_GetMetric(t *testing.T) {
-	handler := api.NewHandler(storage.TestMetricStorage())
+	handler := api.NewHandler(storage.NewMetricsStorage())
 
 	tests := []struct {
 		name           string
