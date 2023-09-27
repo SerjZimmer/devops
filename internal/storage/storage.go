@@ -76,6 +76,7 @@ func (s *MetricsStorage) UpdateMetricValue(metricType string, metricName string,
 	}
 	s.Mu.Unlock()
 }
+
 func (s *MetricsStorage) GetMetricByName(metricName string) (float64, error) {
 	s.Mu.RLock()
 	value, exists := s.MetricsMap[metricName]

@@ -10,34 +10,42 @@ import (
 )
 
 func main() {
-	strg := storage.NewMetricsStorage()
+	s := storage.NewMetricsStorage()
 	c := config.NewConfig()
-	monitoring(strg, c.Address, c.PollInterval, c.ReportInterval)
+	monitoring(s, c.Address, c.PollInterval, c.ReportInterval)
 }
 
-func monitoring(strg *storage.MetricsStorage, address string, pollInterval, reportInterval int) {
+func monitoring(s *storage.MetricsStorage, address string, pollInterval, reportInterval int) {
 
 	for {
 		go func() {
 			for {
 				var m runtime.MemStats
 				runtime.ReadMemStats(&m)
-				strg.WriteMetrics(m)
+				s.WriteMetrics(m)
 				time.Sleep(time.Duration(pollInterval) * time.Second)
 			}
 		}()
 
 		go func() {
 			for {
-				strg.Mu.Lock()
-				for metricName, metricValue := range strg.MetricsMap {
-					if metricName != "PollCount" {
-						go sendMetric("gauge", metricName, metricValue, address)
+				s.Mu.Lock()
+				for metricName, metricValue := range s.MetricsMap {
+
+					s.Metrics.ID = metricName
+
+					if s.Metrics.ID != "PollCount" {
+						s.Metrics.MType = "gauge"
+						s.Metrics.Value = &metricValue
+						go sendMetric(s, address)
 					} else {
-						go sendMetric("counter", metricName, int64(metricValue), address)
+						s.Metrics.MType = "counter"
+						delta := int64(metricValue)
+						s.Metrics.Delta = &delta
+						go sendMetric(s, address)
 					}
 				}
-				strg.Mu.Unlock()
+				s.Mu.Unlock()
 
 				time.Sleep(time.Duration(reportInterval) * time.Second)
 			}
@@ -45,8 +53,12 @@ func monitoring(strg *storage.MetricsStorage, address string, pollInterval, repo
 	}
 }
 
-func sendMetric(metricType, metricName string, metricValue any, address string) {
-	serverURL := fmt.Sprintf("http://%v/update/%s/%s/%v", address, metricType, metricName, metricValue)
+func sendMetric(s *storage.MetricsStorage, address string) {
+
+	serverURL := fmt.Sprintf("http://%v/update/%v/%v/%v", address, s.Metrics.MType, s.Metrics, s.Metrics.Value)
+	if s.Metrics.MType == "counter" {
+		serverURL = fmt.Sprintf("http://%v/update/%v/%v/%v", address, s.Metrics.MType, s.Metrics, s.Metrics.Delta)
+	}
 
 	req, err := http.NewRequest("POST", serverURL, nil)
 	if err != nil {
