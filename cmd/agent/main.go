@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/SerjZimmer/devops/internal/config"
 	"github.com/SerjZimmer/devops/internal/storage"
@@ -55,18 +57,24 @@ func monitoring(s *storage.MetricsStorage, address string, pollInterval, reportI
 
 func sendMetric(s *storage.MetricsStorage, address string) {
 
-	serverURL := fmt.Sprintf("http://%v/update/%v/%v/%v", address, s.Metrics.MType, s.Metrics, s.Metrics.Value)
-	if s.Metrics.MType == "counter" {
-		serverURL = fmt.Sprintf("http://%v/update/%v/%v/%v", address, s.Metrics.MType, s.Metrics, s.Metrics.Delta)
+	jsonData, err := json.Marshal(s.Metrics)
+	if err != nil {
+		fmt.Println("Ошибка при маршалинге JSON:", err)
+		return
 	}
 
-	req, err := http.NewRequest("POST", serverURL, nil)
+	serverURL := fmt.Sprintf("http://%v/update", address)
+	if s.Metrics.MType == "counter" {
+		serverURL = fmt.Sprintf("http://%v/update", address)
+	}
+
+	req, err := http.NewRequest("POST", serverURL, bytes.NewBuffer(jsonData))
 	if err != nil {
 		fmt.Println("Ошибка при создании запроса:", err)
 		return
 	}
 
-	req.Header.Set("Content-Type", "text/plain")
+	req.Header.Set("Content-Type", "application/json")
 
 	client := http.Client{}
 	resp, err := client.Do(req)

@@ -1,7 +1,9 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/SerjZimmer/devops/internal/storage"
 	"go.uber.org/zap"
 	"html/template"
 	"net/http"
@@ -29,8 +31,8 @@ const metricsListTemplate = `
 var tmpl = template.Must(template.New("metricsList").Parse(metricsListTemplate))
 
 type metricsStorage interface {
-	GetMetricByName(metricName string) (float64, error)                    //возвращать структуру
-	UpdateMetricValue(metricType string, metricName string, value float64) // принимать структуру
+	GetMetricByName(metricName string) (float64, error) //возвращать структуру
+	UpdateMetricValue(m storage.Metrics)                // принимать структуру
 	SortMetricByName() []string
 	GetAllMetrics() string
 }
@@ -128,31 +130,26 @@ func (s Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
-
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) != 5 {
-		http.Error(w, "Неверный формат URL", http.StatusBadRequest)
+	var m storage.Metrics
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&m); err != nil {
+		http.Error(w, "Ошибка при разборе JSON", http.StatusBadRequest)
 		return
 	}
 
-	metricType := parts[2]
-	metricName := parts[3]
-	metricValue := parts[4]
-
-	if metricType != "gauge" && metricType != "counter" {
+	if m.MType != "gauge" && m.MType != "counter" {
 		http.Error(w, "Неверный тип метрики", http.StatusBadRequest)
 		return
 	}
 
-	value, err := parseNumeric(metricValue)
-	if err != nil {
-		http.Error(w, "Значение метрики должно быть числом", http.StatusBadRequest)
-		return
+	if m.MType != "counter" {
+		s.stor.UpdateMetricValue(m)
+		fmt.Fprintf(w, "Метрика успешно принята: %s/%s/%v\n", m.MType, m.ID, m.Value)
+	} else {
+		s.stor.UpdateMetricValue(m)
+		fmt.Fprintf(w, "Метрика успешно принята: %s/%s/%v\n", m.MType, m.ID, m.Delta)
 	}
 
-	s.stor.UpdateMetricValue(metricType, metricName, value)
-
-	fmt.Fprintf(w, "Метрика успешно принята: %s/%s/%s\n", metricType, metricName, metricValue)
 }
 
 func parseNumeric(mValue string) (float64, error) {
