@@ -5,6 +5,7 @@ import (
 	"github.com/SerjZimmer/devops/internal/config"
 	"github.com/SerjZimmer/devops/internal/storage"
 	"net/http"
+	"runtime"
 	"time"
 )
 
@@ -19,7 +20,9 @@ func monitoring(strg *storage.MetricsStorage, address string, pollInterval, repo
 	for {
 		go func() {
 			for {
-				strg.WriteMetrics()
+				var m runtime.MemStats
+				runtime.ReadMemStats(&m)
+				strg.WriteMetrics(m)
 				time.Sleep(time.Duration(pollInterval) * time.Second)
 			}
 		}()
