@@ -39,14 +39,12 @@ type Handler struct {
 	stor   metricsStorage
 	logger *zap.Logger
 }
+
 type responseWriterWithStatus struct {
 	http.ResponseWriter
 	status int
 }
 
-func (rw *responseWriterWithStatus) Status() int {
-	return rw.status
-}
 func NewHandler(stor metricsStorage) *Handler {
 	config := zap.NewProductionConfig()
 	config.Level = zap.NewAtomicLevelAt(zap.InfoLevel)
