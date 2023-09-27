@@ -62,17 +62,18 @@ func (s *MetricsStorage) WriteMetrics(m runtime.MemStats) {
 	s.Mu.Unlock()
 }
 
-func (s *MetricsStorage) UpdateMetricValue(metricType string, metricName string, value float64) {
+func (s *MetricsStorage) UpdateMetricValue(m Metrics) {
 
 	s.Mu.Lock()
-	if metricType == "counter" {
-		if metricName == "PollCount" {
-			s.MetricsMap[metricName] += 1
+	if m.MType == "counter" {
+		if m.ID == "PollCount" {
+			s.MetricsMap[m.ID] += 1
 		} else {
-			s.MetricsMap[metricName] += value
+			fmt.Println(float64(*m.Delta), m.Delta)
+			s.MetricsMap[m.ID] += float64(*m.Delta)
 		}
 	} else {
-		s.MetricsMap[metricName] = value
+		s.MetricsMap[m.ID] = *m.Value
 	}
 	s.Mu.Unlock()
 }
