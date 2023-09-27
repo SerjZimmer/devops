@@ -144,10 +144,10 @@ func (s Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 
 	if m.MType != "counter" {
 		s.stor.UpdateMetricValue(m)
-		fmt.Fprintf(w, "Метрика успешно принята: %s/%s/%v\n", m.MType, m.ID, m.Value)
+		fmt.Fprintf(w, "Метрика успешно принята: %s/%s/%v\n", m.MType, m.ID, *m.Value)
 	} else {
 		s.stor.UpdateMetricValue(m)
-		fmt.Fprintf(w, "Метрика успешно принята: %s/%s/%v\n", m.MType, m.ID, m.Delta)
+		fmt.Fprintf(w, "Метрика успешно принята: %s/%s/%v\n", m.MType, m.ID, *m.Delta)
 	}
 
 }

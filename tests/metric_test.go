@@ -7,31 +7,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
-func Test_UpdateMetric_BadRequest(t *testing.T) {
-
-	// Create a test HTTP request with an invalid URL
-	req, err := http.NewRequest("GET", "/update/invalid/url", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Create a test HTTP ResponseWriter
-	rr := httptest.NewRecorder()
-
-	// Call your updateHandler
-	handler := api.NewHandler(storage.NewMetricsStorage())
-	handler.UpdateMetric(rr, req)
-
-	// Check if the response status code is http.StatusBadRequest
-	assert.Equal(t, http.StatusBadRequest, rr.Code)
-
-	// Check the response body for the error message
-	expectedResponse := "Неверный формат URL\n"
-	assert.Equal(t, expectedResponse, rr.Body.String())
-}
 func Test_UpdateMetric(t *testing.T) {
 	handler := api.NewHandler(storage.NewMetricsStorage())
 	testCases := []struct {
@@ -39,24 +18,26 @@ func Test_UpdateMetric(t *testing.T) {
 		input    string
 		expected string
 	}{
-		{"valid gauge input", "/update/gauge/metric1/3.14", "Метрика успешно принята: gauge/metric1/3.14\n"},
-		{"valid counter input", "/update/counter/metric2/2.71", "Метрика успешно принята: counter/metric2/2.71\n"},
-		{"invalid URL format", "/update/gauge/metric3", "Неверный формат URL\n"},
-		{"invalid metric type", "/update/invalid/metric4/1.23", "Неверный тип метрики\n"},
-		{"invalid metric value", "/update/gauge/metric5/invalid", "Значение метрики должно быть числом\n"},
+		{"valid gauge input", `{"id": "metric1", "type": "gauge", "value": 3.14}`, "Метрика успешно принята: gauge/metric1/3.14\n"},
+		{"valid counter input", `{"id": "metric2", "type": "counter", "delta": 2}`, "Метрика успешно принята: counter/metric2/2\n"},
+		{"invalid JSON", `{"id": "metric3", "type": "gauge", "value": "invalid"}`, "Ошибка при разборе JSON\n"},
+		{"invalid metric type", `{"id": "metric4", "type": "invalid", "value": 1.23}`, "Неверный тип метрики\n"},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			req, err := http.NewRequest("GET", tc.input, nil)
+			// Создаем POST-запрос с JSON-телом
+			reqBody := strings.NewReader(tc.input)
+			req, err := http.NewRequest("POST", "/update", reqBody)
 			if err != nil {
 				t.Fatal(err)
 			}
+			req.Header.Set("Content-Type", "application/json")
 
 			rr := httptest.NewRecorder()
-			handler := http.HandlerFunc(handler.UpdateMetric)
+			h := http.HandlerFunc(handler.UpdateMetric)
 
-			handler.ServeHTTP(rr, req)
+			h.ServeHTTP(rr, req)
 
 			assert.Equal(t, tc.expected, rr.Body.String())
 		})
