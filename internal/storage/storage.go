@@ -1,80 +1,24 @@
 package storage
 
 import (
-	"encoding/json"
 	"fmt"
-	"github.com/SerjZimmer/devops/internal/config"
 	"math/rand"
-	"os"
 	"runtime"
 	"sort"
 	"sync"
-	"time"
 )
 
 type MetricsStorage struct {
 	Mu         sync.RWMutex
 	MetricsMap map[string]float64
-	c          *config.Config
+	Metrics    Metrics
 }
 
-func TestMetricStorage() *MetricsStorage {
-	m := &MetricsStorage{
+func NewMetricsStorage() *MetricsStorage {
+	return &MetricsStorage{
 		MetricsMap: make(map[string]float64),
+		Metrics:    Metrics{},
 	}
-
-	return m
-}
-func NewMetricsStorage(c *config.Config) *MetricsStorage {
-	m := &MetricsStorage{
-		MetricsMap: make(map[string]float64),
-		c:          c,
-	}
-	if c.RestoreFlag {
-		_ = m.ReadFromDisk()
-	}
-	go func() {
-		if c.StoreInterval > 0 {
-			t := time.NewTicker(time.Duration(c.StoreInterval) * time.Second)
-			for i := range t.C {
-				err := m.writeToDisk()
-				if err != nil {
-					fmt.Println(i)
-					fmt.Println(err)
-				}
-			}
-		}
-
-	}()
-	return m
-}
-func (s *MetricsStorage) ReadFromDisk() error {
-	bytes, err := os.ReadFile(s.c.FileStoragePath)
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal(bytes, &s.MetricsMap)
-}
-
-func (s *MetricsStorage) Shutdown() {
-	_ = s.writeToDisk()
-}
-
-func (s *MetricsStorage) writeToDisk() error {
-	s.Mu.Lock()
-	defer s.Mu.Unlock()
-
-	copyMetricsMap := make(map[string]float64)
-	for key, value := range s.MetricsMap {
-		copyMetricsMap[key] = value
-	}
-
-	bytes, err := json.Marshal(copyMetricsMap)
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(s.c.FileStoragePath, bytes, 0644)
 }
 
 type Metrics struct {
@@ -116,35 +60,30 @@ func (s *MetricsStorage) WriteMetrics(m runtime.MemStats) {
 	s.MetricsMap["PollCount"] = 1
 	s.MetricsMap["RandomValue"] = rand.Float64()
 	s.Mu.Unlock()
-	if s.c.StoreInterval == 0 {
-		_ = s.writeToDisk()
-	}
 }
 
-func (s *MetricsStorage) UpdateMetricValue(m Metrics) {
+func (s *MetricsStorage) UpdateMetricValue(metricType string, metricName string, value float64) {
 
 	s.Mu.Lock()
-
-	if m.MType == "counter" {
-		if m.Delta == nil {
-			v := int64(1)
-			m.Delta = &v
+	if metricType == "counter" {
+		if metricName == "PollCount" {
+			s.MetricsMap[metricName] += 1
+		} else {
+			s.MetricsMap[metricName] += value
 		}
-		s.MetricsMap[m.ID] += float64(*m.Delta)
 	} else {
-		s.MetricsMap[m.ID] = *m.Value
+		s.MetricsMap[metricName] = value
 	}
 	s.Mu.Unlock()
 }
-
-func (s *MetricsStorage) GetMetricByName(m Metrics) (float64, error) {
+func (s *MetricsStorage) GetMetricByName(metricName string) (float64, error) {
 	s.Mu.RLock()
-	value, exists := s.MetricsMap[m.ID]
+	value, exists := s.MetricsMap[metricName]
 	s.Mu.RUnlock()
 	if exists {
 		return value, nil
 	}
-	return 0, fmt.Errorf("undefind metricName: %v", m.ID)
+	return 0, fmt.Errorf("undefind metricName: %v", metricName)
 }
 
 func (s *MetricsStorage) SortMetricByName() []string {
