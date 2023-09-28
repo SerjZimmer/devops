@@ -69,7 +69,6 @@ func (s *MetricsStorage) UpdateMetricValue(m Metrics) {
 		if m.ID == "PollCount" {
 			s.MetricsMap[m.ID] += 1
 		} else {
-			fmt.Println(float64(*m.Delta), m.Delta)
 			s.MetricsMap[m.ID] += float64(*m.Delta)
 		}
 	} else {

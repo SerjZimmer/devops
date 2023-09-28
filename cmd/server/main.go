@@ -80,5 +80,8 @@ func mRouter(handler *api.Handler) {
 	r.HandleFunc("/update/{metricType}/{metricName}/{metricValue}", handler.UpdateMetric).Methods("POST")
 	r.HandleFunc("/value/{metricType}/{metricName}", handler.GetMetric).Methods("GET")
 	r.HandleFunc("/", handler.GetMetricsList).Methods("GET")
+
+	r.HandleFunc("/update/", handler.UpdateMetricJson).Methods("POST")
+	r.HandleFunc("/value/", handler.GetMetricJson).Methods("POST")
 	http.Handle("/", r)
 }
