@@ -101,6 +101,46 @@ func (s Handler) GetMetricsList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.Method != http.MethodGet {
+		http.Error(w, "Метод не разрешен", http.StatusMethodNotAllowed)
+		return
+	}
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) != 4 {
+		http.Error(w, "Неверный формат URL", http.StatusBadRequest)
+		return
+	}
+
+	metricType := parts[2]
+	metricName := parts[3]
+
+	if metricType != "gauge" && metricType != "counter" {
+		http.Error(w, "Неверный тип метрики", http.StatusNotFound)
+		return
+	}
+
+	var m storage.Metrics
+	m.ID = metricName
+
+	value, err := s.stor.GetMetricByName(m)
+	if err != nil {
+		http.Error(w, "Неверное имя метрики", http.StatusNotFound)
+		return
+	}
+	if m.MType == "counter" {
+		iv := int64(value)
+		m.Delta = &iv
+		fmt.Fprintf(w, "%v\n", m)
+		return
+	}
+	m.Value = &value
+
+	json.NewEncoder(w).Encode(m)
+}
+
+func (s Handler) GetMetricJson(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	var m storage.Metrics
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&m); err != nil {
@@ -118,11 +158,56 @@ func (s Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Неверное имя метрики", http.StatusNotFound)
 		return
 	}
-	fmt.Fprintf(w, "%v\n", value)
+
+	if m.MType == "counter" {
+		iv := int64(value)
+		m.Delta = &iv
+		fmt.Fprintf(w, "%v\n", m)
+		return
+	}
+	m.Value = &value
+
+	json.NewEncoder(w).Encode(m)
 
 }
 
 func (s Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) != 5 {
+		http.Error(w, "Неверный формат URL", http.StatusBadRequest)
+		return
+	}
+
+	metricType := parts[2]
+	metricName := parts[3]
+	metricValue := parts[4]
+
+	if metricType != "gauge" && metricType != "counter" {
+		http.Error(w, "Неверный тип метрики", http.StatusBadRequest)
+		return
+	}
+
+	value, err := parseNumeric(metricValue)
+	if err != nil {
+		http.Error(w, "Значение метрики должно быть числом", http.StatusBadRequest)
+		return
+	}
+
+	var m storage.Metrics
+	m.ID = metricName
+	m.MType = metricType
+	iv := int64(value)
+	m.Delta = &iv
+	m.Value = &value
+
+	s.stor.UpdateMetricValue(m)
+	fmt.Fprintf(w, "Метрика успешно принята: %s/%s/%s\n", metricType, metricName, metricValue)
+}
+func (s Handler) UpdateMetricJson(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
 	var m storage.Metrics
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&m); err != nil {

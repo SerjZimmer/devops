@@ -14,44 +14,48 @@ import (
 func main() {
 	s := storage.NewMetricsStorage()
 	c := config.NewConfig()
+
 	monitoring(s, c.Address, c.PollInterval, c.ReportInterval)
+
 }
 
 func monitoring(s *storage.MetricsStorage, address string, pollInterval, reportInterval int) {
 
 	for {
+
 		go func() {
-			for {
-				var m runtime.MemStats
-				runtime.ReadMemStats(&m)
-				s.WriteMetrics(m)
-				time.Sleep(time.Duration(pollInterval) * time.Second)
-			}
+
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			s.WriteMetrics(m)
+			time.Sleep(time.Duration(pollInterval) * time.Second)
+
 		}()
 
 		go func() {
-			for {
-				s.Mu.Lock()
-				for metricName, metricValue := range s.MetricsMap {
 
-					s.Metrics.ID = metricName
+			s.Mu.Lock()
+			for metricName, metricValue := range s.MetricsMap {
 
-					if s.Metrics.ID != "PollCount" {
-						s.Metrics.MType = "gauge"
-						s.Metrics.Value = &metricValue
-						go sendMetric(s, address)
-					} else {
-						s.Metrics.MType = "counter"
-						delta := int64(metricValue)
-						s.Metrics.Delta = &delta
-						go sendMetric(s, address)
-					}
+				s.Metrics.ID = metricName
+
+				if s.Metrics.ID != "PollCount" {
+					s.Metrics.MType = "gauge"
+					s.Metrics.Value = &metricValue
+					go sendMetric(s, address)
+				} else {
+					s.Metrics.MType = "counter"
+					delta := int64(metricValue)
+					s.Metrics.Delta = &delta
+					go sendMetric(s, address)
 				}
-				s.Mu.Unlock()
-
-				time.Sleep(time.Duration(reportInterval) * time.Second)
 			}
+			s.Mu.Unlock()
+
+			time.Sleep(time.Duration(reportInterval) * time.Second)
+
 		}()
+
 	}
 }
 
@@ -63,10 +67,7 @@ func sendMetric(s *storage.MetricsStorage, address string) {
 		return
 	}
 
-	serverURL := fmt.Sprintf("http://%v/update", address)
-	if s.Metrics.MType == "counter" {
-		serverURL = fmt.Sprintf("http://%v/update", address)
-	}
+	serverURL := fmt.Sprintf("http://%v/update/", address)
 
 	req, err := http.NewRequest("POST", serverURL, bytes.NewBuffer(jsonData))
 	if err != nil {
