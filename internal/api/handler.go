@@ -31,7 +31,7 @@ const metricsListTemplate = `
 var tmpl = template.Must(template.New("metricsList").Parse(metricsListTemplate))
 
 type metricsStorage interface {
-	GetMetricByName(metricName string) (float64, error) //возвращать структуру
+	GetMetricByName(m storage.Metrics) (float64, error) //возвращать структуру
 	UpdateMetricValue(m storage.Metrics)                // принимать структуру
 	SortMetricByName() []string
 	GetAllMetrics() string
@@ -101,26 +101,19 @@ func (s Handler) GetMetricsList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
-
-	if r.Method != http.MethodGet {
-		http.Error(w, "Метод не разрешен", http.StatusMethodNotAllowed)
-		return
-	}
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) != 4 {
-		http.Error(w, "Неверный формат URL", http.StatusBadRequest)
+	var m storage.Metrics
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&m); err != nil {
+		http.Error(w, "Ошибка при разборе JSON", http.StatusBadRequest)
 		return
 	}
 
-	metricType := parts[2]
-	metricName := parts[3]
-
-	if metricType != "gauge" && metricType != "counter" {
-		http.Error(w, "Неверный тип метрики", http.StatusNotFound)
+	if m.MType != "gauge" && m.MType != "counter" {
+		http.Error(w, "Неверный тип метрики", http.StatusBadRequest)
 		return
 	}
 
-	value, err := s.stor.GetMetricByName(metricName)
+	value, err := s.stor.GetMetricByName(m)
 	if err != nil {
 		http.Error(w, "Неверное имя метрики", http.StatusNotFound)
 		return
@@ -142,13 +135,8 @@ func (s Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if m.MType != "counter" {
-		s.stor.UpdateMetricValue(m)
-		fmt.Fprintf(w, "Метрика успешно принята: %s/%s/%v\n", m.MType, m.ID, *m.Value)
-	} else {
-		s.stor.UpdateMetricValue(m)
-		fmt.Fprintf(w, "Метрика успешно принята: %s/%s/%v\n", m.MType, m.ID, *m.Delta)
-	}
+	s.stor.UpdateMetricValue(m)
+	fmt.Fprintf(w, "Метрика успешно принята: %s/%s\n", m.MType, m.ID)
 
 }
 
