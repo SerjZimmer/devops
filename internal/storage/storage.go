@@ -78,14 +78,14 @@ func (s *MetricsStorage) UpdateMetricValue(m Metrics) {
 	s.Mu.Unlock()
 }
 
-func (s *MetricsStorage) GetMetricByName(metricName string) (float64, error) {
+func (s *MetricsStorage) GetMetricByName(m Metrics) (float64, error) {
 	s.Mu.RLock()
-	value, exists := s.MetricsMap[metricName]
+	value, exists := s.MetricsMap[m.ID]
 	s.Mu.RUnlock()
 	if exists {
 		return value, nil
 	}
-	return 0, fmt.Errorf("undefind metricName: %v", metricName)
+	return 0, fmt.Errorf("undefind metricName: %v", m.ID)
 }
 
 func (s *MetricsStorage) SortMetricByName() []string {
