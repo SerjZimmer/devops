@@ -14,54 +14,50 @@ import (
 func main() {
 	s := storage.NewMetricsStorage()
 	c := config.NewConfig()
-
-	monitoring(s, c.Address, c.PollInterval, c.ReportInterval)
-
-}
-
-func monitoring(s *storage.MetricsStorage, address string, pollInterval, reportInterval int) {
+	go func() {
+		for {
+			time.Sleep(time.Second * time.Duration(c.PollInterval))
+			poll(s, c.Address)
+		}
+	}()
 
 	for {
-
-		go func() {
-
-			var m runtime.MemStats
-			runtime.ReadMemStats(&m)
-			s.WriteMetrics(m)
-			time.Sleep(time.Duration(pollInterval) * time.Second)
-
-		}()
-
-		go func() {
-
-			s.Mu.Lock()
-			for metricName, metricValue := range s.MetricsMap {
-
-				s.Metrics.ID = metricName
-
-				if s.Metrics.ID != "PollCount" {
-					s.Metrics.MType = "gauge"
-					s.Metrics.Value = &metricValue
-					go sendMetric(s, address)
-				} else {
-					s.Metrics.MType = "counter"
-					delta := int64(metricValue)
-					s.Metrics.Delta = &delta
-					go sendMetric(s, address)
-				}
-			}
-			s.Mu.Unlock()
-
-			time.Sleep(time.Duration(reportInterval) * time.Second)
-
-		}()
-
+		time.Sleep(time.Duration(c.ReportInterval) * time.Second)
+		send(s, c.Address)
 	}
+
 }
 
-func sendMetric(s *storage.MetricsStorage, address string) {
+func poll(s *storage.MetricsStorage, address string) {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	s.WriteMetrics(m)
+}
 
-	jsonData, err := json.Marshal(s.Metrics)
+func send(s *storage.MetricsStorage, address string) {
+	s.Mu.Lock()
+	var m storage.Metrics
+	for metricName, metricValue := range s.MetricsMap {
+
+		m.ID = metricName
+
+		if m.ID != "PollCount" {
+			m.MType = "gauge"
+			m.Value = &metricValue
+			sendMetric(m, address)
+		} else {
+			m.MType = "counter"
+			delta := int64(metricValue)
+			m.Delta = &delta
+			sendMetric(m, address)
+		}
+	}
+	s.Mu.Unlock()
+}
+
+func sendMetric(m storage.Metrics, address string) {
+
+	jsonData, err := json.Marshal(m)
 	if err != nil {
 		fmt.Println("Ошибка при маршалинге JSON:", err)
 		return
