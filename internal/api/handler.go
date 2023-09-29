@@ -128,15 +128,8 @@ func (s Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Неверное имя метрики", http.StatusNotFound)
 		return
 	}
-	if m.MType == "counter" {
-		iv := int64(value)
-		m.Delta = &iv
-		fmt.Fprintf(w, "%v\n", m)
-		return
-	}
-	m.Value = &value
 
-	json.NewEncoder(w).Encode(m)
+	json.NewEncoder(w).Encode(value)
 }
 
 func (s Handler) GetMetricJson(w http.ResponseWriter, r *http.Request) {
@@ -162,7 +155,7 @@ func (s Handler) GetMetricJson(w http.ResponseWriter, r *http.Request) {
 	if m.MType == "counter" {
 		iv := int64(value)
 		m.Delta = &iv
-		fmt.Fprintf(w, "%v\n", m)
+		json.NewEncoder(w).Encode(m)
 		return
 	}
 	m.Value = &value
@@ -215,14 +208,33 @@ func (s Handler) UpdateMetricJson(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if m.MType != "gauge" && m.MType != "counter" {
-		http.Error(w, "Неверный тип метрики", http.StatusBadRequest)
+	if !isValidMetrics(m) {
+		http.Error(w, "Некорректные данные в JSON", http.StatusBadRequest)
 		return
 	}
 
 	s.stor.UpdateMetricValue(m)
 	fmt.Fprintf(w, "Метрика успешно принята: %s/%s\n", m.MType, m.ID)
 
+}
+func isValidMetrics(m storage.Metrics) bool {
+	if m.ID == "" {
+		return false
+	}
+
+	if m.MType != "gauge" && m.MType != "counter" {
+		return false
+	}
+
+	if m.MType == "gauge" && m.Value == nil {
+		return false
+	}
+
+	if m.MType == "counter" && m.Delta == nil && m.ID != "PollCount" {
+		return false
+	}
+
+	return true
 }
 
 func parseNumeric(mValue string) (float64, error) {
