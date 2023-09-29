@@ -11,13 +11,11 @@ import (
 type MetricsStorage struct {
 	Mu         sync.RWMutex
 	MetricsMap map[string]float64
-	Metrics    Metrics
 }
 
 func NewMetricsStorage() *MetricsStorage {
 	return &MetricsStorage{
 		MetricsMap: make(map[string]float64),
-		Metrics:    Metrics{},
 	}
 }
 
