@@ -81,7 +81,7 @@ func (s *Handler) LoggingMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func (s Handler) GetMetricsList(w http.ResponseWriter, r *http.Request) {
+func (s *Handler) GetMetricsList(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
 	metricsString := s.stor.GetAllMetrics()
@@ -100,7 +100,7 @@ func (s Handler) GetMetricsList(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
+func (s *Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if r.Method != http.MethodGet {
 		http.Error(w, "Метод не разрешен", http.StatusMethodNotAllowed)
@@ -132,7 +132,7 @@ func (s Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(value)
 }
 
-func (s Handler) GetMetricJson(w http.ResponseWriter, r *http.Request) {
+func (s *Handler) GetMetricJson(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	var m storage.Metrics
 	decoder := json.NewDecoder(r.Body)
@@ -164,7 +164,7 @@ func (s Handler) GetMetricJson(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (s Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
+func (s *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	parts := strings.Split(r.URL.Path, "/")
@@ -198,7 +198,7 @@ func (s Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	s.stor.UpdateMetricValue(m)
 	fmt.Fprintf(w, "Метрика успешно принята: %s/%s/%s\n", metricType, metricName, metricValue)
 }
-func (s Handler) UpdateMetricJson(w http.ResponseWriter, r *http.Request) {
+func (s *Handler) UpdateMetricJson(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var m storage.Metrics
