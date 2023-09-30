@@ -38,19 +38,23 @@ func send(s *storage.MetricsStorage, address string) {
 	s.Mu.Lock()
 	var m storage.Metrics
 	for metricName, metricValue := range s.MetricsMap {
-
 		m.ID = metricName
 
 		if m.ID != "PollCount" {
 			m.MType = "gauge"
 			m.Value = &metricValue
-			sendMetric(m, address)
 		} else {
 			m.MType = "counter"
-			delta := int64(metricValue)
-			m.Delta = &delta
-			sendMetric(m, address)
+			if m.ID == "PollCount" {
+				v := int64(1)
+				m.Delta = &v
+			} else {
+				delta := int64(metricValue)
+				m.Delta = &delta
+			}
 		}
+
+		sendMetric(m, address)
 	}
 	s.Mu.Unlock()
 }

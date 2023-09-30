@@ -63,12 +63,9 @@ func (s *MetricsStorage) WriteMetrics(m runtime.MemStats) {
 func (s *MetricsStorage) UpdateMetricValue(m Metrics) {
 
 	s.Mu.Lock()
+
 	if m.MType == "counter" {
-		if m.ID == "PollCount" {
-			s.MetricsMap[m.ID] += 1
-		} else {
-			s.MetricsMap[m.ID] += float64(*m.Delta)
-		}
+		s.MetricsMap[m.ID] += float64(*m.Delta)
 	} else {
 		s.MetricsMap[m.ID] = *m.Value
 	}
