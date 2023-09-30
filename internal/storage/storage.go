@@ -65,6 +65,10 @@ func (s *MetricsStorage) UpdateMetricValue(m Metrics) {
 	s.Mu.Lock()
 
 	if m.MType == "counter" {
+		if m.Delta == nil {
+			v := int64(1)
+			m.Delta = &v
+		}
 		s.MetricsMap[m.ID] += float64(*m.Delta)
 	} else {
 		s.MetricsMap[m.ID] = *m.Value
