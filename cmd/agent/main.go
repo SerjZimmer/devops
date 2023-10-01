@@ -80,7 +80,7 @@ func sendMetric(m storage.Metrics, address string) {
 	client := http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		//fmt.Println("Ошибка при отправке метрики на сервер:", err)
+		fmt.Println("Ошибка при отправке метрики на сервер:", err, serverURL, m)
 		return
 	}
 	defer resp.Body.Close()

@@ -31,8 +31,8 @@ const metricsListTemplate = `
 var tmpl = template.Must(template.New("metricsList").Parse(metricsListTemplate))
 
 type metricsStorage interface {
-	GetMetricByName(m storage.Metrics) (float64, error) //возвращать структуру
-	UpdateMetricValue(m storage.Metrics)                // принимать структуру
+	GetMetricByName(m storage.Metrics) (float64, error)
+	UpdateMetricValue(m storage.Metrics)
 	SortMetricByName() []string
 	GetAllMetrics() string
 }
@@ -129,7 +129,11 @@ func (s *Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(value)
+	err = json.NewEncoder(w).Encode(value)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 func (s *Handler) GetMetricJson(w http.ResponseWriter, r *http.Request) {
@@ -155,12 +159,20 @@ func (s *Handler) GetMetricJson(w http.ResponseWriter, r *http.Request) {
 	if m.MType == "counter" {
 		iv := int64(value)
 		m.Delta = &iv
-		json.NewEncoder(w).Encode(m)
+		err = json.NewEncoder(w).Encode(m)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		return
 	}
 	m.Value = &value
 
-	json.NewEncoder(w).Encode(m)
+	err = json.NewEncoder(w).Encode(m)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 }
 
