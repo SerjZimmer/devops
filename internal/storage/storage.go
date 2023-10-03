@@ -39,7 +39,8 @@ func NewMetricsStorage(c *config.Config) *MetricsStorage {
 			for i := range t.C {
 				err := m.writeToDisk()
 				if err != nil {
-					fmt.Println(err, i)
+					fmt.Println(i)
+					fmt.Println(err)
 				}
 			}
 		}
