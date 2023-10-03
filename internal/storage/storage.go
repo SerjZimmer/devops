@@ -36,10 +36,10 @@ func NewMetricsStorage(c *config.Config) *MetricsStorage {
 	go func() {
 		if c.StoreInterval > 0 {
 			t := time.NewTicker(time.Duration(c.StoreInterval) * time.Second)
-			for _ = range t.C {
+			for i := range t.C {
 				err := m.writeToDisk()
 				if err != nil {
-					fmt.Println(err)
+					fmt.Println(err, i)
 				}
 			}
 		}
