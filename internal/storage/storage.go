@@ -49,7 +49,7 @@ func (s *MetricsStorage) ReadFromDisk() error {
 }
 
 func (s *MetricsStorage) Shutdown() {
-	s.writeToDisk()
+	_ = s.writeToDisk()
 }
 func (s *MetricsStorage) writeToDisk() error {
 	bytes, err := json.Marshal(s.MetricsMap)
