@@ -224,11 +224,17 @@ func (s *Handler) UpdateMetricJson(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Некорректные данные в JSON", http.StatusBadRequest)
 		return
 	}
-
 	s.stor.UpdateMetricValue(m)
-	fmt.Fprintf(w, "Метрика успешно принята: %s/%s\n", m.MType, m.ID)
+	jsonResponse, err := json.Marshal(m)
+	if err != nil {
+		http.Error(w, "Ошибка при сериализации JSON", http.StatusInternalServerError)
+		return
+	}
 
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonResponse)
 }
+
 func isValidMetrics(m storage.Metrics) bool {
 	if m.ID == "" {
 		return false
