@@ -94,6 +94,7 @@ func (s *Handler) GetMetricsList(w http.ResponseWriter, r *http.Request) {
 		Metrics: metrics,
 	}
 
+	w.WriteHeader(http.StatusOK)
 	if err := tmpl.Execute(w, data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -129,6 +130,7 @@ func (s *Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(value)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -159,15 +161,18 @@ func (s *Handler) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	if m.MType == "counter" {
 		iv := int64(value)
 		m.Delta = &iv
+		w.WriteHeader(http.StatusOK)
 		err = json.NewEncoder(w).Encode(m)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
 		return
 	}
 	m.Value = &value
 
+	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(m)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -208,6 +213,7 @@ func (s *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	m.Value = &value
 
 	s.stor.UpdateMetricValue(m)
+	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "Метрика успешно принята: %s/%s/%s\n", metricType, metricName, metricValue)
 }
 func (s *Handler) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
