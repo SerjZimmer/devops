@@ -1,22 +1,62 @@
 package storage
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/SerjZimmer/devops/internal/config"
 	"math/rand"
+	"os"
 	"runtime"
 	"sort"
 	"sync"
+	"time"
 )
 
 type MetricsStorage struct {
 	Mu         sync.RWMutex
 	MetricsMap map[string]float64
+	c          *config.Config
 }
 
-func NewMetricsStorage() *MetricsStorage {
-	return &MetricsStorage{
+func NewMetricsStorage(c *config.Config) *MetricsStorage {
+	m := &MetricsStorage{
 		MetricsMap: make(map[string]float64),
+		c:          c,
 	}
+	if c.RestoreFlag {
+		_ = m.ReadFromDisk()
+	}
+	go func() {
+		if c.StoreInterval > 0 {
+			t := time.NewTicker(time.Duration(c.StoreInterval) * time.Second)
+			for _ = range t.C {
+				err := m.writeToDisk()
+				if err != nil {
+					fmt.Println(err)
+				}
+			}
+		}
+
+	}()
+	return m
+}
+func (s *MetricsStorage) ReadFromDisk() error {
+	bytes, err := os.ReadFile(s.c.FileStoragePath)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(bytes, &s.MetricsMap)
+}
+
+func (s *MetricsStorage) Shutdown() {
+	s.writeToDisk()
+}
+func (s *MetricsStorage) writeToDisk() error {
+	bytes, err := json.Marshal(s.MetricsMap)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(s.c.FileStoragePath, bytes, 0644)
 }
 
 type Metrics struct {
@@ -58,6 +98,9 @@ func (s *MetricsStorage) WriteMetrics(m runtime.MemStats) {
 	s.MetricsMap["PollCount"] = 1
 	s.MetricsMap["RandomValue"] = rand.Float64()
 	s.Mu.Unlock()
+	if s.c.StoreInterval == 0 {
+		_ = s.writeToDisk()
+	}
 }
 
 func (s *MetricsStorage) UpdateMetricValue(m Metrics) {

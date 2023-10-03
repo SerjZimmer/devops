@@ -24,7 +24,7 @@ var (
 func main() {
 
 	c := config.NewConfig()
-	st := storage.NewMetricsStorage()
+	st := storage.NewMetricsStorage(c)
 	handler := api.NewHandler(st)
 
 	go func() {
@@ -47,6 +47,8 @@ func main() {
 	if err := server.Shutdown(ctx); err != nil {
 		fmt.Printf("Ошибка при завершении работы сервера: %v\n", err)
 	}
+
+	st.Shutdown()
 
 	os.Exit(0)
 }
