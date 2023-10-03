@@ -12,7 +12,7 @@ var (
 	originalSendMetric = sendMetric
 	sendMetricT        = func(m storage.Metrics, address string) {}
 )
-var strg = storage.NewMetricsStorage()
+
 var m storage.Metrics
 
 func Test_sendMetric(t *testing.T) {
