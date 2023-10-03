@@ -62,7 +62,7 @@ func TestUpdateMetricJson(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			handler.UpdateMetricJson(w, req)
+			handler.UpdateMetricJSON(w, req)
 
 			assert.Equal(t, tc.ExpectedStatus, w.Code)
 			assert.Equal(t, tc.ExpectedBody, w.Body.String())

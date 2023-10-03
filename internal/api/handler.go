@@ -136,7 +136,7 @@ func (s *Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Handler) GetMetricJson(w http.ResponseWriter, r *http.Request) {
+func (s *Handler) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	var m storage.Metrics
 	decoder := json.NewDecoder(r.Body)
@@ -210,7 +210,7 @@ func (s *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	s.stor.UpdateMetricValue(m)
 	fmt.Fprintf(w, "Метрика успешно принята: %s/%s/%s\n", metricType, metricName, metricValue)
 }
-func (s *Handler) UpdateMetricJson(w http.ResponseWriter, r *http.Request) {
+func (s *Handler) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var m storage.Metrics
