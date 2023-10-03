@@ -3,7 +3,6 @@ package tests
 import (
 	"errors"
 	"github.com/SerjZimmer/devops/internal/api"
-	"github.com/SerjZimmer/devops/internal/config"
 	"github.com/SerjZimmer/devops/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"net/http"
@@ -11,8 +10,6 @@ import (
 	"strings"
 	"testing"
 )
-
-var c *config.Config
 
 func TestUpdateMetricJson(t *testing.T) {
 
@@ -53,7 +50,7 @@ func TestUpdateMetricJson(t *testing.T) {
 			ExpectedBody:   "Некорректные данные в JSON\n",
 		},
 	}
-	handler := api.NewHandler(storage.NewMetricsStorage(c))
+	handler := api.NewHandler(storage.TestMetricStorage())
 	for _, tc := range testCases {
 		t.Run(tc.Name, func(t *testing.T) {
 
@@ -74,7 +71,7 @@ func TestUpdateMetricJson(t *testing.T) {
 }
 
 func Test_GetMetricsList(t *testing.T) {
-	handler := api.NewHandler(storage.NewMetricsStorage(c))
+	handler := api.NewHandler(storage.TestMetricStorage())
 
 	req, err := http.NewRequest("GET", "/", nil)
 	assert.NoError(t, err)
@@ -91,7 +88,7 @@ func Test_GetMetricsList(t *testing.T) {
 }
 
 func Test_GetMetric(t *testing.T) {
-	handler := api.NewHandler(storage.NewMetricsStorage(c))
+	handler := api.NewHandler(storage.TestMetricStorage())
 
 	tests := []struct {
 		name           string

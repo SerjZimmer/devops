@@ -18,6 +18,13 @@ type MetricsStorage struct {
 	c          *config.Config
 }
 
+func TestMetricStorage() *MetricsStorage {
+	m := &MetricsStorage{
+		MetricsMap: make(map[string]float64),
+	}
+
+	return m
+}
 func NewMetricsStorage(c *config.Config) *MetricsStorage {
 	m := &MetricsStorage{
 		MetricsMap: make(map[string]float64),
