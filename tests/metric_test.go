@@ -22,19 +22,19 @@ func TestUpdateMetricJson(t *testing.T) {
 			Name:           "Valid JSON",
 			RequestBody:    `{"type": "gauge", "id": "metricName", "value": 123.45}`,
 			ExpectedStatus: http.StatusOK,
-			ExpectedBody:   "Метрика успешно принята: gauge/metricName\n",
+			ExpectedBody:   "{\"id\":\"metricName\",\"type\":\"gauge\",\"value\":123.45}",
 		},
 		{
 			Name:           "Valid JSON",
 			RequestBody:    `{"type": "counter", "id": "metricCounter", "delta": 123}`,
 			ExpectedStatus: http.StatusOK,
-			ExpectedBody:   "Метрика успешно принята: counter/metricCounter\n",
+			ExpectedBody:   "{\"id\":\"metricCounter\",\"type\":\"counter\",\"delta\":123}",
 		},
 		{
 			Name:           "Valid JSON",
 			RequestBody:    `{"type": "counter", "id": "PollCount"}`,
 			ExpectedStatus: http.StatusOK,
-			ExpectedBody:   "Метрика успешно принята: counter/PollCount\n",
+			ExpectedBody:   "{\"id\":\"PollCount\",\"type\":\"counter\"}",
 		},
 		{
 			Name:           "Invalid JSON",
