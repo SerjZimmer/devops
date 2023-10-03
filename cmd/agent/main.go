@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"github.com/SerjZimmer/devops/internal/config"
@@ -59,34 +60,56 @@ func send(s *storage.MetricsStorage, address string) {
 	s.Mu.Unlock()
 }
 
-func sendMetric(m storage.Metrics, address string) {
+func sendCompressedContent(data []byte, contentType string, address string) {
+	// Создание буфера для хранения сжатых данных
+	var compressedData bytes.Buffer
+	gzipWriter := gzip.NewWriter(&compressedData)
 
+	// Запись данных в сжатый буфер
+	_, err := gzipWriter.Write(data)
+	if err != nil {
+		fmt.Println("Ошибка при сжатии данных:", err)
+		return
+	}
+
+	// Завершение записи и закрытие сжатого буфера
+	gzipWriter.Close()
+
+	serverURL := fmt.Sprintf("http://%v/update/", address)
+
+	// Создание HTTP-запроса с сжатыми данными
+	req, err := http.NewRequest("POST", serverURL, &compressedData)
+	if err != nil {
+		fmt.Println("Ошибка при создании запроса:", err)
+		return
+	}
+
+	// Установка заголовков для указания сжатого формата и типа контента
+	req.Header.Set("Content-Type", contentType)
+	req.Header.Set("Content-Encoding", "gzip")
+
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println("Ошибка при отправке данных на сервер:", err, serverURL)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		fmt.Println("Ошибка при отправке данных на сервер. Код ответа:", resp.StatusCode)
+		return
+	}
+}
+
+func sendMetric(m storage.Metrics, address string) {
+	// Маршалинг JSON-данных
 	jsonData, err := json.Marshal(m)
 	if err != nil {
 		fmt.Println("Ошибка при маршалинге JSON:", err)
 		return
 	}
 
-	serverURL := fmt.Sprintf("http://%v/update/", address)
-
-	req, err := http.NewRequest("POST", serverURL, bytes.NewBuffer(jsonData))
-	if err != nil {
-		fmt.Println("Ошибка при создании запроса:", err)
-		return
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-
-	client := http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println("Ошибка при отправке метрики на сервер:", err, serverURL, m)
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		fmt.Println("Ошибка при отправке метрики на сервер. Код ответа:", resp.StatusCode)
-		return
-	}
+	// Определение типа контента (application/json) и отправка сжатых данных
+	sendCompressedContent(jsonData, "application/json", address)
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/SerjZimmer/devops/internal/api"
 	"github.com/SerjZimmer/devops/internal/config"
+	"github.com/SerjZimmer/devops/internal/gzip"
 	"github.com/SerjZimmer/devops/internal/storage"
 	"github.com/gorilla/mux"
 	"net/http"
@@ -75,7 +76,7 @@ func run(c *config.Config) error {
 func mRouter(handler *api.Handler) {
 	r := mux.NewRouter()
 
-	r.Use(handler.LoggingMiddleware)
+	r.Use(handler.LoggingMiddleware, gzip.GzipMiddleware)
 
 	r.HandleFunc("/update/{metricType}/{metricName}/{metricValue}", handler.UpdateMetric).Methods("POST")
 	r.HandleFunc("/value/{metricType}/{metricName}", handler.GetMetric).Methods("GET")
