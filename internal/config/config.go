@@ -43,7 +43,6 @@ func NewConfig() *Config {
 		if f.Name == "a" || f.Name == "p" || f.Name == "i" || f.Name == "f" || f.Name == "r" || f.Name == "l" || f.Name == "c" {
 			return
 		}
-
 		fmt.Printf("Unknown flag: -%s\n", f.Name)
 		flag.PrintDefaults()
 		os.Exit(1)

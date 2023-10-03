@@ -13,8 +13,9 @@ import (
 )
 
 func main() {
-	s := storage.NewMetricsStorage()
+
 	c := config.NewConfig()
+	s := storage.NewMetricsStorage(c)
 	go func() {
 		for {
 			time.Sleep(time.Second * time.Duration(c.PollInterval))
