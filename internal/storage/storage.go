@@ -59,11 +59,21 @@ func (s *MetricsStorage) ReadFromDisk() error {
 func (s *MetricsStorage) Shutdown() {
 	_ = s.writeToDisk()
 }
+
 func (s *MetricsStorage) writeToDisk() error {
-	bytes, err := json.Marshal(s.MetricsMap)
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+
+	copyMetricsMap := make(map[string]float64)
+	for key, value := range s.MetricsMap {
+		copyMetricsMap[key] = value
+	}
+
+	bytes, err := json.Marshal(copyMetricsMap)
 	if err != nil {
 		return err
 	}
+
 	return os.WriteFile(s.c.FileStoragePath, bytes, 0644)
 }
 
