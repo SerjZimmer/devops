@@ -1,9 +1,12 @@
 package storage
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/SerjZimmer/devops/internal/config"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"math/rand"
 	"os"
 	"runtime"
@@ -16,6 +19,7 @@ type MetricsStorage struct {
 	Mu         sync.RWMutex
 	MetricsMap map[string]float64
 	c          *config.Config
+	DB         *sql.DB
 }
 
 func TestMetricStorage() *MetricsStorage {
@@ -25,11 +29,27 @@ func TestMetricStorage() *MetricsStorage {
 
 	return m
 }
+
+func (s *MetricsStorage) PingDb() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	if err := s.DB.PingContext(ctx); err != nil {
+		return err
+	}
+	return nil
+}
 func NewMetricsStorage(c *config.Config) *MetricsStorage {
+	db, err := sql.Open("pgx", c.DatabaseDSN)
+	if err != nil {
+		panic(err)
+	}
+
 	m := &MetricsStorage{
 		MetricsMap: make(map[string]float64),
 		c:          c,
+		DB:         db,
 	}
+
 	if c.RestoreFlag {
 		_ = m.ReadFromDisk()
 	}

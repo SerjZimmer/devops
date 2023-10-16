@@ -16,9 +16,12 @@ type Config struct {
 	RestoreFlag     bool
 	LogLevel        string
 	MaxConnections  int
+	DatabaseDSN     string
 }
 
 func NewConfig() *Config {
+	ps := fmt.Sprintf("host=%s user=%s password=%s dbname=%s sslmode=disable",
+		"localhost", "zimmer", "6969", "test")
 	config := &Config{
 		Address:         getEnv("ADDRESS", "localhost:8080"),
 		PollInterval:    getEnvAsInt("POLL_INTERVAL", 2),
@@ -28,6 +31,7 @@ func NewConfig() *Config {
 		RestoreFlag:     getEnvAsBool("RESTORE", true),
 		LogLevel:        getEnv("LOG_LEVEL", "info"),
 		MaxConnections:  getEnvAsInt("MAX_CONNECTIONS", 100),
+		DatabaseDSN:     getEnv("DATABASE_DSN", ps),
 	}
 
 	flag.StringVar(&config.Address, "a", getEnv("ADDRESS", "localhost:8080"), "Address of the HTTP server endpoint")
@@ -35,12 +39,14 @@ func NewConfig() *Config {
 	flag.IntVar(&config.PollInterval, "p", getEnvAsInt("POLL_INTERVAL", 2), "Frequency of polling metrics from the runtime package")
 	flag.IntVar(&config.StoreInterval, "i", getEnvAsInt("STORE_INTERVAL", 300), "Interval in seconds for storing server metrics on disk")
 	flag.StringVar(&config.FileStoragePath, "f", getEnv("FILE_STORAGE_PATH", "/tmp/metrics-db.json"), "Path to the file for storing metrics")
-	//flag.BoolVar(&config.RestoreFlag, "b", getEnvAsBool("RESTORE", true), "Whether to restore previously saved metrics on server start")
+	flag.BoolVar(&config.RestoreFlag, "b", getEnvAsBool("RESTORE", true), "Whether to restore previously saved metrics on server start")
 	flag.StringVar(&config.LogLevel, "l", getEnv("LOG_LEVEL", "info"), "Logging level (e.g., 'info', 'debug')")
 	flag.IntVar(&config.MaxConnections, "c", getEnvAsInt("MAX_CONNECTIONS", 100), "Maximum number of concurrent connections")
 
+	flag.StringVar(&config.DatabaseDSN, "d", getEnv("DATABASE_DSN", ps), "Database DSN")
+
 	flag.VisitAll(func(f *flag.Flag) {
-		if f.Name == "a" || f.Name == "p" || f.Name == "i" || f.Name == "f" || f.Name == "r" || f.Name == "l" || f.Name == "c" {
+		if f.Name == "a" || f.Name == "r" || f.Name == "p" || f.Name == "i" || f.Name == "f" || f.Name == "b" || f.Name == "l" || f.Name == "c" || f.Name == "d" {
 			return
 		}
 
