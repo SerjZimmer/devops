@@ -107,7 +107,7 @@ func sendMetric(m storage.Metrics, address string) {
 	// Маршалинг JSON-данных
 	jsonData, err := json.Marshal(m)
 	if err != nil {
-		fmt.Println("Ошибка при маршалинге JSON:", err)
+		fmt.Println("Ошибка  при маршалинге JSON:", err)
 		return
 	}
 
