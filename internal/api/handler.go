@@ -164,7 +164,7 @@ func (s *Handler) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 
 	value, err := s.stor.GetMetricByName(m)
 	if err != nil {
-		http.Error(w, "Неверное имя метрики", http.StatusNotFound)
+		http.Error(w, "Неверное  имя метрики", http.StatusNotFound)
 		return
 	}
 
