@@ -31,13 +31,14 @@ func TestMetricStorage() *MetricsStorage {
 }
 
 func (s *MetricsStorage) PingDb() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := s.DB.PingContext(ctx); err != nil {
 		return err
 	}
 	return nil
 }
+
 func NewMetricsStorage(c *config.Config) *MetricsStorage {
 	db, err := sql.Open("pgx", c.DatabaseDSN)
 	if err != nil {

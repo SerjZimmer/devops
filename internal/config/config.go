@@ -21,8 +21,6 @@ type Config struct {
 
 // test
 func NewConfig() *Config {
-	ps := fmt.Sprintf("host=%s user=%s password=%s dbname=%s sslmode=disable",
-		"localhost", "zimmer", "6969", "test")
 	config := &Config{
 		Address:         getEnv("ADDRESS", "localhost:8080"),
 		PollInterval:    getEnvAsInt("POLL_INTERVAL", 2),
@@ -32,7 +30,7 @@ func NewConfig() *Config {
 		RestoreFlag:     getEnvAsBool("RESTORE", true),
 		LogLevel:        getEnv("LOG_LEVEL", "info"),
 		MaxConnections:  getEnvAsInt("MAX_CONNECTIONS", 100),
-		DatabaseDSN:     getEnv("DATABASE_DSN", ps),
+		DatabaseDSN:     getEnv("DATABASE_DSN", "host=localhost user=zimmer password=6969 dbname=test sslmode=disable"),
 	}
 
 	flag.StringVar(&config.Address, "a", getEnv("ADDRESS", "localhost:8080"), "Address of the HTTP server endpoint")
@@ -44,7 +42,7 @@ func NewConfig() *Config {
 	flag.StringVar(&config.LogLevel, "l", getEnv("LOG_LEVEL", "info"), "Logging level (e.g., 'info', 'debug')")
 	flag.IntVar(&config.MaxConnections, "c", getEnvAsInt("MAX_CONNECTIONS", 100), "Maximum number of concurrent connections")
 
-	flag.StringVar(&config.DatabaseDSN, "d", getEnv("DATABASE_DSN", ps), "Database DSN")
+	flag.StringVar(&config.DatabaseDSN, "d", getEnv("DATABASE_DSN", "host=localhost user=zimmer password=6969 dbname=test sslmode=disable"), "Database DSN")
 
 	flag.VisitAll(func(f *flag.Flag) {
 		if f.Name == "a" || f.Name == "r" || f.Name == "p" || f.Name == "i" || f.Name == "f" || f.Name == "b" || f.Name == "l" || f.Name == "c" || f.Name == "d" {
