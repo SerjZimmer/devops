@@ -88,7 +88,7 @@ func mRouter(handler *api.Handler) {
 	r.HandleFunc("/update/", handler.UpdateMetricJSON).Methods("POST")
 	r.HandleFunc("/value/", handler.GetMetricJSON).Methods("POST")
 
-	r.HandleFunc("/ping", handler.PingDb).Methods("GET")
+	r.HandleFunc("/ping", handler.PingDB).Methods("GET")
 
 	http.Handle("/", r)
 }

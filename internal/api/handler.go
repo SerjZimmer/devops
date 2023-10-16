@@ -82,7 +82,7 @@ func (s *Handler) LoggingMiddleware(next http.Handler) http.Handler {
 		)
 	})
 }
-func (s *Handler) PingDb(w http.ResponseWriter, r *http.Request) {
+func (s *Handler) PingDB(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.stor.PingDb(); err != nil {
 		fmt.Println(err)
