@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/SerjZimmer/devops/internal/storage"
+	_ "github.com/jackc/pgx/v4"
 	"go.uber.org/zap"
 	"html/template"
 	"net/http"
@@ -35,6 +36,7 @@ type metricsStorage interface {
 	UpdateMetricValue(m storage.Metrics)
 	SortMetricByName() []string
 	GetAllMetrics() string
+	PingDb() error
 }
 
 type Handler struct {
@@ -79,6 +81,15 @@ func (s *Handler) LoggingMiddleware(next http.Handler) http.Handler {
 			zap.Duration("Duration", time.Since(startTime)),
 		)
 	})
+}
+func (s *Handler) PingDb(w http.ResponseWriter, r *http.Request) {
+
+	if err := s.stor.PingDb(); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Println(err)
+	}
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintln(w, "Database connection is healthy")
 }
 
 func (s *Handler) GetMetricsList(w http.ResponseWriter, r *http.Request) {

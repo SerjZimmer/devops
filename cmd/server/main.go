@@ -42,6 +42,7 @@ func main() {
 	}()
 
 	<-shutdownChan
+	defer st.DB.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := server.Shutdown(ctx); err != nil {
@@ -86,5 +87,8 @@ func mRouter(handler *api.Handler) {
 
 	r.HandleFunc("/update/", handler.UpdateMetricJSON).Methods("POST")
 	r.HandleFunc("/value/", handler.GetMetricJSON).Methods("POST")
+
+	r.HandleFunc("/ping", handler.PingDb).Methods("GET")
+
 	http.Handle("/", r)
 }
