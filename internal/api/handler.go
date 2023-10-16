@@ -104,7 +104,7 @@ func (s *Handler) GetMetricsList(w http.ResponseWriter, r *http.Request) {
 func (s *Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if r.Method != http.MethodGet {
-		http.Error(w, "Метод не разрешен", http.StatusMethodNotAllowed)
+		http.Error(w, "Метод не  разрешен", http.StatusMethodNotAllowed)
 		return
 	}
 	parts := strings.Split(r.URL.Path, "/")
