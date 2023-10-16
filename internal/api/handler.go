@@ -29,7 +29,6 @@ const metricsListTemplate = `
 </html>
 `
 
-// ff
 var tmpl = template.Must(template.New("metricsList").Parse(metricsListTemplate))
 
 type metricsStorage interface {

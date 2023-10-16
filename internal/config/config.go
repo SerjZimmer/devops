@@ -19,7 +19,6 @@ type Config struct {
 	DatabaseDSN     string
 }
 
-// test
 func NewConfig() *Config {
 	config := &Config{
 		Address:         getEnv("ADDRESS", "localhost:8080"),
