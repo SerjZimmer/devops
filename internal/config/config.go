@@ -19,6 +19,7 @@ type Config struct {
 	DatabaseDSN     string
 }
 
+// test
 func NewConfig() *Config {
 	ps := fmt.Sprintf("host=%s user=%s password=%s dbname=%s sslmode=disable",
 		"localhost", "zimmer", "6969", "test")
