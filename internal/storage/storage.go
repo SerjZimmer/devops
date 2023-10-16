@@ -30,7 +30,7 @@ func TestMetricStorage() *MetricsStorage {
 	return m
 }
 
-func (s *MetricsStorage) PingDb() error {
+func (s *MetricsStorage) PingDB() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := s.DB.PingContext(ctx); err != nil {

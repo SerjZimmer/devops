@@ -36,7 +36,7 @@ type metricsStorage interface {
 	UpdateMetricValue(m storage.Metrics)
 	SortMetricByName() []string
 	GetAllMetrics() string
-	PingDb() error
+	PingDB() error
 }
 
 type Handler struct {
@@ -84,7 +84,7 @@ func (s *Handler) LoggingMiddleware(next http.Handler) http.Handler {
 }
 func (s *Handler) PingDB(w http.ResponseWriter, r *http.Request) {
 
-	if err := s.stor.PingDb(); err != nil {
+	if err := s.stor.PingDB(); err != nil {
 		fmt.Println(err)
 		w.WriteHeader(http.StatusBadRequest)
 	}
