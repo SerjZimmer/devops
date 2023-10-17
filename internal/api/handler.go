@@ -34,6 +34,7 @@ var tmpl = template.Must(template.New("metricsList").Parse(metricsListTemplate))
 type metricsStorage interface {
 	GetMetricByName(m storage.Metrics) (float64, error)
 	UpdateMetricValue(m storage.Metrics)
+	UpdateMetricsValue(m []storage.Metrics)
 	SortMetricByName() []string
 	GetAllMetrics() string
 	PingDB() error
@@ -225,6 +226,7 @@ func (s *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "Метрика успешно принята: %s/%s/%s\n", metricType, metricName, metricValue)
 }
+
 func (s *Handler) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -240,6 +242,27 @@ func (s *Handler) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.stor.UpdateMetricValue(m)
+	jsonResponse, err := json.Marshal(m)
+	if err != nil {
+		http.Error(w, "Ошибка при сериализации JSON", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonResponse)
+}
+
+func (s *Handler) UpdateMetricsJSON(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	var m []storage.Metrics
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&m); err != nil {
+		http.Error(w, "Ошибка при разборе JSON", http.StatusBadRequest)
+		return
+	}
+
+	s.stor.UpdateMetricsValue(m)
 	jsonResponse, err := json.Marshal(m)
 	if err != nil {
 		http.Error(w, "Ошибка при сериализации JSON", http.StatusInternalServerError)

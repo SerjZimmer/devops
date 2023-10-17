@@ -309,6 +309,75 @@ func (s *MetricsStorage) UpdateMetricValue(m Metrics) {
 	s.Mu.Unlock()
 }
 
+func (s *MetricsStorage) UpdateMetricsValue(metrics []Metrics) {
+
+	for _, m := range metrics {
+		s.Mu.Lock()
+		if m.MType == "counter" {
+			if m.Delta == nil {
+				v := int64(1)
+				m.Delta = &v
+			}
+			s.MetricsMap[m.ID] += float64(*m.Delta)
+
+			d := int64(s.MetricsMap[m.ID])
+			metricData := Metrics{
+				ID:    m.ID,
+				MType: m.MType,
+				Delta: &d,
+				Value: m.Value,
+			}
+
+			metricDataJSON, err := json.Marshal(metricData)
+			if err != nil {
+				fmt.Println(err)
+				s.Mu.Unlock()
+			}
+			if !keyExists(m.ID) {
+				_, err := s.DB.ExecContext(context.Background(), "INSERT INTO metrics (name, metric_data) VALUES ($1, $2)", m.ID, metricDataJSON)
+				if err != nil {
+					fmt.Println(err)
+				}
+			}
+			_, err = s.DB.ExecContext(context.Background(), "UPDATE metrics SET metric_data = $1 WHERE name = $2", metricDataJSON, m.ID)
+			if err != nil {
+				fmt.Println(err)
+			}
+
+		} else {
+			d := int64(0)
+			s.MetricsMap[m.ID] = *m.Value
+
+			metricData := Metrics{
+				ID:    m.ID,
+				MType: m.MType,
+				Delta: &d,
+				Value: m.Value,
+			}
+
+			metricDataJSON, err := json.Marshal(metricData)
+			if err != nil {
+				fmt.Println(err)
+				s.Mu.Unlock()
+			}
+			if !keyExists(m.ID) {
+				_, err := s.DB.ExecContext(context.Background(), "INSERT INTO metrics (name, metric_data) VALUES ($1, $2)", m.ID, metricDataJSON)
+				if err != nil {
+					fmt.Println(err)
+				}
+			}
+
+			_, err = s.DB.ExecContext(context.Background(), "UPDATE metrics SET metric_data = $1 WHERE name = $2", metricDataJSON, m.ID)
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+
+		s.Mu.Unlock()
+	}
+
+}
+
 func (s *MetricsStorage) GetMetricByName(m Metrics) (float64, error) {
 	s.Mu.RLock()
 	value, exists := s.MetricsMap[m.ID]
