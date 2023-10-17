@@ -45,7 +45,6 @@ func NewConfig() *Config {
 
 	} else {
 		flag.StringVar(&config.DatabaseDSN, "d", getEnv("DATABASE_DSN", "host=localhost user=zimmer password=6969 dbname=test sslmode=disable"), "Database DSN")
-
 	}
 
 	flag.VisitAll(func(f *flag.Flag) {
