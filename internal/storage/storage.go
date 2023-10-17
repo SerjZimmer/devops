@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/SerjZimmer/devops/internal/config"
+	"github.com/jackc/pgx/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"math/rand"
 	"os"
@@ -14,6 +15,93 @@ import (
 	"sync"
 	"time"
 )
+
+var metricKeys = []string{
+	"Alloc",
+	"BuckHashSys",
+	"Frees",
+	"GCCPUFraction",
+	"GCSys",
+	"HeapAlloc",
+	"HeapIdle",
+	"HeapInuse",
+	"HeapObjects",
+	"HeapReleased",
+	"HeapSys",
+	"LastGC",
+	"Lookups",
+	"MCacheInuse",
+	"MCacheSys",
+	"MSpanInuse",
+	"MSpanSys",
+	"Mallocs",
+	"NextGC",
+	"NumForcedGC",
+	"NumGC",
+	"OtherSys",
+	"PauseTotalNs",
+	"StackInuse",
+	"StackSys",
+	"Sys",
+	"TotalAlloc",
+	"PollCount",
+	"RandomValue",
+}
+
+func createDB(DBConn string) {
+	// Установка соединения с базой данных
+	conn, err := pgx.Connect(context.Background(), DBConn)
+	if err != nil {
+		panic(err)
+	}
+	var tableExists bool
+	err = conn.QueryRow(context.Background(), "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = $1)", "metrics").Scan(&tableExists)
+	if err != nil {
+		panic(err)
+	}
+
+	// Если таблица metrics не существует, создаем её
+	if !tableExists {
+		_, err = conn.Exec(context.Background(), `CREATE TABLE metrics (
+            name text PRIMARY KEY,
+            metric_data jsonb
+        )`)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println("Таблица 'metrics' создана.")
+
+		// Создайте записи с нулевыми значениями для каждого ключа в metricKeys
+		for _, key := range metricKeys {
+			delta := int64(0)
+			value := 0.0
+			metricData := Metrics{
+				ID:    key,
+				MType: "",
+				Delta: &delta,
+				Value: &value,
+			}
+			metricDataJSON, err := json.Marshal(metricData)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+
+			_, err = conn.Exec(context.Background(), `
+                INSERT INTO metrics (name, metric_data)
+                VALUES ($1, $2)
+                ON CONFLICT (name) DO UPDATE
+                SET metric_data = $2
+            `, key, metricDataJSON)
+
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+	} else {
+		fmt.Println("Таблица 'metrics' уже существует.")
+	}
+}
 
 type MetricsStorage struct {
 	Mu         sync.RWMutex
@@ -45,6 +133,8 @@ func NewMetricsStorage(c *config.Config) *MetricsStorage {
 		panic(err)
 	}
 
+	createDB(c.DatabaseDSN)
+
 	m := &MetricsStorage{
 		MetricsMap: make(map[string]float64),
 		c:          c,
@@ -58,7 +148,7 @@ func NewMetricsStorage(c *config.Config) *MetricsStorage {
 		if c.StoreInterval > 0 {
 			t := time.NewTicker(time.Duration(c.StoreInterval) * time.Second)
 			for i := range t.C {
-				err := m.writeToDisk()
+				err = m.writeToDisk()
 				if err != nil {
 					fmt.Println(i)
 					fmt.Println(err)
@@ -141,9 +231,15 @@ func (s *MetricsStorage) WriteMetrics(m runtime.MemStats) {
 		_ = s.writeToDisk()
 	}
 }
-
+func keyExists(key string) bool {
+	for _, k := range metricKeys {
+		if k == key {
+			return true
+		}
+	}
+	return false
+}
 func (s *MetricsStorage) UpdateMetricValue(m Metrics) {
-
 	s.Mu.Lock()
 
 	if m.MType == "counter" {
@@ -152,9 +248,60 @@ func (s *MetricsStorage) UpdateMetricValue(m Metrics) {
 			m.Delta = &v
 		}
 		s.MetricsMap[m.ID] += float64(*m.Delta)
+
+		d := int64(s.MetricsMap[m.ID])
+		metricData := Metrics{
+			ID:    m.ID,
+			MType: m.MType,
+			Delta: &d,
+			Value: m.Value,
+		}
+
+		metricDataJSON, err := json.Marshal(metricData)
+		if err != nil {
+			fmt.Println(err)
+			s.Mu.Unlock()
+		}
+		if keyExists(m.ID) == false {
+			_, err := s.DB.ExecContext(context.Background(), "INSERT INTO metrics (name, metric_data) VALUES ($1, $2)", m.ID, metricDataJSON)
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+		_, err = s.DB.ExecContext(context.Background(), "UPDATE metrics SET metric_data = $1 WHERE name = $2", metricDataJSON, m.ID)
+		if err != nil {
+			fmt.Println(err)
+		}
+
 	} else {
+		d := int64(0)
 		s.MetricsMap[m.ID] = *m.Value
+
+		metricData := Metrics{
+			ID:    m.ID,
+			MType: m.MType,
+			Delta: &d,
+			Value: m.Value,
+		}
+
+		metricDataJSON, err := json.Marshal(metricData)
+		if err != nil {
+			fmt.Println(err)
+			s.Mu.Unlock()
+		}
+		if keyExists(m.ID) == false {
+			_, err := s.DB.ExecContext(context.Background(), "INSERT INTO metrics (name, metric_data) VALUES ($1, $2)", m.ID, metricDataJSON)
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+
+		_, err = s.DB.ExecContext(context.Background(), "UPDATE metrics SET metric_data = $1 WHERE name = $2", metricDataJSON, m.ID)
+		if err != nil {
+			fmt.Println(err)
+		}
 	}
+
 	s.Mu.Unlock()
 }
 

@@ -85,13 +85,11 @@ func (s *Handler) LoggingMiddleware(next http.Handler) http.Handler {
 func (s *Handler) PingDB(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.stor.PingDB(); err != nil {
-		fmt.Println(err)
 		w.WriteHeader(http.StatusBadRequest)
 	}
 	w.WriteHeader(http.StatusOK)
 }
 
-// t
 func (s *Handler) GetMetricsList(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
