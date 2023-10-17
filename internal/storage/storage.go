@@ -49,6 +49,7 @@ var metricKeys = []string{
 }
 
 func createDB(DBConn string) {
+
 	// Установка соединения с базой данных
 	conn, err := pgx.Connect(context.Background(), DBConn)
 	if err != nil {
@@ -101,6 +102,7 @@ func createDB(DBConn string) {
 	} else {
 		fmt.Println("Таблица 'metrics' уже существует.")
 	}
+
 }
 
 type MetricsStorage struct {
@@ -128,36 +130,61 @@ func (s *MetricsStorage) PingDB() error {
 }
 
 func NewMetricsStorage(c *config.Config) *MetricsStorage {
-	db, err := sql.Open("pgx", c.DatabaseDSN)
-	if err != nil {
-		panic(err)
-	}
-
-	createDB(c.DatabaseDSN)
-
-	m := &MetricsStorage{
-		MetricsMap: make(map[string]float64),
-		c:          c,
-		DB:         db,
-	}
-
-	if c.RestoreFlag {
-		_ = m.ReadFromDisk()
-	}
-	go func() {
-		if c.StoreInterval > 0 {
-			t := time.NewTicker(time.Duration(c.StoreInterval) * time.Second)
-			for i := range t.C {
-				err = m.writeToDisk()
-				if err != nil {
-					fmt.Println(i)
-					fmt.Println(err)
-				}
-			}
+	if c.DatabaseDSN != "" {
+		db, err := sql.Open("pgx", c.DatabaseDSN)
+		if err != nil {
+			panic(err)
+		}
+		createDB(c.DatabaseDSN)
+		m := &MetricsStorage{
+			MetricsMap: make(map[string]float64),
+			c:          c,
+			DB:         db,
 		}
 
-	}()
-	return m
+		if c.RestoreFlag {
+			_ = m.ReadFromDisk()
+		}
+		go func() {
+			if c.StoreInterval > 0 {
+				t := time.NewTicker(time.Duration(c.StoreInterval) * time.Second)
+				for i := range t.C {
+					err := m.writeToDisk()
+					if err != nil {
+						fmt.Println(i)
+						fmt.Println(err)
+					}
+				}
+			}
+
+		}()
+		return m
+	} else {
+		m := &MetricsStorage{
+			MetricsMap: make(map[string]float64),
+			c:          c,
+			DB:         nil,
+		}
+
+		if c.RestoreFlag {
+			_ = m.ReadFromDisk()
+		}
+		go func() {
+			if c.StoreInterval > 0 {
+				t := time.NewTicker(time.Duration(c.StoreInterval) * time.Second)
+				for i := range t.C {
+					err := m.writeToDisk()
+					if err != nil {
+						fmt.Println(i)
+						fmt.Println(err)
+					}
+				}
+			}
+
+		}()
+		return m
+	}
+
 }
 func (s *MetricsStorage) ReadFromDisk() error {
 	bytes, err := os.ReadFile(s.c.FileStoragePath)
