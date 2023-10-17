@@ -262,7 +262,7 @@ func (s *MetricsStorage) UpdateMetricValue(m Metrics) {
 			fmt.Println(err)
 			s.Mu.Unlock()
 		}
-		if keyExists(m.ID) == false {
+		if !keyExists(m.ID) {
 			_, err := s.DB.ExecContext(context.Background(), "INSERT INTO metrics (name, metric_data) VALUES ($1, $2)", m.ID, metricDataJSON)
 			if err != nil {
 				fmt.Println(err)
@@ -289,7 +289,7 @@ func (s *MetricsStorage) UpdateMetricValue(m Metrics) {
 			fmt.Println(err)
 			s.Mu.Unlock()
 		}
-		if keyExists(m.ID) == false {
+		if !keyExists(m.ID) {
 			_, err := s.DB.ExecContext(context.Background(), "INSERT INTO metrics (name, metric_data) VALUES ($1, $2)", m.ID, metricDataJSON)
 			if err != nil {
 				fmt.Println(err)
