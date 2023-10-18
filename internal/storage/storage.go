@@ -55,6 +55,11 @@ func createDB(DBConn string) {
 	if err != nil {
 		panic(err)
 	}
+
+	_, err = conn.Exec(context.Background(), "DROP TABLE IF EXISTS metrics")
+	if err != nil {
+		panic(err)
+	}
 	var tableExists bool
 	err = conn.QueryRow(context.Background(), "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = $1)", "metrics").Scan(&tableExists)
 	if err != nil {
@@ -130,6 +135,7 @@ func (s *MetricsStorage) PingDB() error {
 }
 
 func NewMetricsStorage(c *config.Config) *MetricsStorage {
+
 	if c.DatabaseDSN != "" {
 		c.DatabaseDSN = "host=localhost user=zimmer password=6969 dbname=test sslmode=disable"
 	}
@@ -241,6 +247,7 @@ func keyExists(key string) bool {
 			return true
 		}
 	}
+	metricKeys = append(metricKeys, key)
 	return false
 }
 func (s *MetricsStorage) UpdateMetricValue(m Metrics) {

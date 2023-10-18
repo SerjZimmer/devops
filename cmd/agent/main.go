@@ -26,7 +26,7 @@ func main() {
 	for {
 		time.Sleep(time.Duration(c.ReportInterval) * time.Second)
 		send(s, c.Address)
-		sendAll(s, c.Address)
+		sendAllInBatches(s, c.Address, 5)
 	}
 
 }
@@ -62,12 +62,14 @@ func send(s *storage.MetricsStorage, address string) {
 	s.Mu.Unlock()
 }
 
-func sendAll(s *storage.MetricsStorage, address string) {
+func sendAllInBatches(s *storage.MetricsStorage, address string, batchSize int) {
 	s.Mu.Lock()
 	var metrics []storage.Metrics
-	var m storage.Metrics
+
 	for metricName, metricValue := range s.MetricsMap {
-		m.ID = metricName
+		m := storage.Metrics{
+			ID: metricName,
+		}
 
 		if m.ID != "PollCount" {
 			m.MType = "gauge"
@@ -84,8 +86,16 @@ func sendAll(s *storage.MetricsStorage, address string) {
 		}
 		metrics = append(metrics, m)
 
+		if len(metrics) == batchSize {
+			sendMetricsBatch(metrics, address)
+			metrics = nil
+		}
 	}
-	sendMetrics(metrics, address)
+
+	if len(metrics) > 0 {
+		sendMetricsBatch(metrics, address)
+	}
+
 	s.Mu.Unlock()
 }
 
@@ -174,25 +184,20 @@ func sendAllCompressedContent(data []byte, contentType string, address string) {
 }
 
 func sendMetric(m storage.Metrics, address string) {
-	// Маршалинг JSON-данных
 	jsonData, err := json.Marshal(m)
 	if err != nil {
-		fmt.Println("Ошибка  при маршалинге JSON:", err)
+		fmt.Println("Ошибка при маршалинге JSON:", err)
 		return
 	}
 
-	// Определение типа контента (application/json) и отправка сжатых данных
 	sendCompressedContent(jsonData, "application/json", address)
 }
 
-func sendMetrics(m []storage.Metrics, address string) {
-	// Маршалинг JSON-данных
+func sendMetricsBatch(m []storage.Metrics, address string) {
 	jsonData, err := json.Marshal(m)
 	if err != nil {
-		fmt.Println("Ошибка  при маршалинге JSON:", err)
-		return
-	}
+		fmt.Println("Ошибка при маршалинге JSON:", err)
 
-	// Определение типа контента (application/json) и отправка сжатых данных
+	}
 	sendAllCompressedContent(jsonData, "application/json", address)
 }
