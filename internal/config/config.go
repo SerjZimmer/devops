@@ -29,7 +29,7 @@ func NewConfig() *Config {
 		RestoreFlag:     getEnvAsBool("RESTORE", true),
 		LogLevel:        getEnv("LOG_LEVEL", "info"),
 		MaxConnections:  getEnvAsInt("MAX_CONNECTIONS", 100),
-		DatabaseDSN:     getEnv("DATABASE_DSN", "host=localhost user=zimmer password=6969 dbname=test sslmode=disable"),
+		DatabaseDSN:     getEnv("DATABASE_DSN", ""),
 	}
 
 	flag.StringVar(&config.Address, "a", getEnv("ADDRESS", "localhost:8080"), "Address of the HTTP server endpoint")
@@ -44,7 +44,7 @@ func NewConfig() *Config {
 		fmt.Println("DatabaseDSN is empty. The server will not connect to a database.")
 
 	} else {
-		flag.StringVar(&config.DatabaseDSN, "d", getEnv("DATABASE_DSN", "host=localhost user=zimmer password=6969 dbname=test sslmode=disable"), "Database DSN")
+		flag.StringVar(&config.DatabaseDSN, "d", getEnv("DATABASE_DSN", ""), "Database DSN")
 	}
 
 	flag.VisitAll(func(f *flag.Flag) {
