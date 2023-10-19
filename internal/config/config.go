@@ -40,12 +40,7 @@ func NewConfig() *Config {
 	flag.BoolVar(&config.RestoreFlag, "b", getEnvAsBool("RESTORE", true), "Whether to restore previously saved metrics on server start")
 	flag.StringVar(&config.LogLevel, "l", getEnv("LOG_LEVEL", "info"), "Logging level (e.g., 'info', 'debug')")
 	flag.IntVar(&config.MaxConnections, "c", getEnvAsInt("MAX_CONNECTIONS", 100), "Maximum number of concurrent connections")
-	if config.DatabaseDSN == "" {
-		fmt.Println("DatabaseDSN is empty. The server will not connect to a database.")
-
-	} else {
-		flag.StringVar(&config.DatabaseDSN, "d", getEnv("DATABASE_DSN", ""), "Database DSN")
-	}
+	flag.StringVar(&config.DatabaseDSN, "d", getEnv("DATABASE_DSN", ""), "Database DSN")
 
 	flag.VisitAll(func(f *flag.Flag) {
 		if f.Name == "a" || f.Name == "r" || f.Name == "p" || f.Name == "i" || f.Name == "f" || f.Name == "b" || f.Name == "l" || f.Name == "c" || f.Name == "d" {

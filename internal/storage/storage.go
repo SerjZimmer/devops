@@ -136,20 +136,20 @@ func (s *MetricsStorage) PingDB() error {
 
 func NewMetricsStorage(c *config.Config) *MetricsStorage {
 
-	if c.DatabaseDSN == "" {
-		c.DatabaseDSN = "host=localhost user=zimmer password=6969 dbname=test sslmode=disable"
-	}
+	m := &MetricsStorage{}
 
-	db, err := sql.Open("pgx", c.DatabaseDSN)
-	if err != nil {
-		panic(err)
+	if c.DatabaseDSN != "" {
+		fmt.Println(123)
+		db, err := sql.Open("pgx", c.DatabaseDSN)
+		if err != nil {
+			panic(err)
+		}
+		createDB(c.DatabaseDSN)
+		m.DB = db
 	}
-	createDB(c.DatabaseDSN)
-	m := &MetricsStorage{
-		MetricsMap: make(map[string]float64),
-		c:          c,
-		DB:         db,
-	}
+	m.MetricsMap = make(map[string]float64)
+	m.c = c
+	m.DB = nil
 
 	if c.RestoreFlag {
 		_ = m.ReadFromDisk()
@@ -273,15 +273,17 @@ func (s *MetricsStorage) UpdateMetricValue(m Metrics) {
 			fmt.Println(err)
 			s.Mu.Unlock()
 		}
-		if !keyExists(m.ID) {
-			_, err := s.DB.ExecContext(context.Background(), "INSERT INTO metrics (name, metric_data) VALUES ($1, $2)", m.ID, metricDataJSON)
+		if s.DB != nil {
+			if !keyExists(m.ID) {
+				_, err := s.DB.ExecContext(context.Background(), "INSERT INTO metrics (name, metric_data) VALUES ($1, $2)", m.ID, metricDataJSON)
+				if err != nil {
+					fmt.Println(err)
+				}
+			}
+			_, err = s.DB.ExecContext(context.Background(), "UPDATE metrics SET metric_data = $1 WHERE name = $2", metricDataJSON, m.ID)
 			if err != nil {
 				fmt.Println(err)
 			}
-		}
-		_, err = s.DB.ExecContext(context.Background(), "UPDATE metrics SET metric_data = $1 WHERE name = $2", metricDataJSON, m.ID)
-		if err != nil {
-			fmt.Println(err)
 		}
 
 	} else {
@@ -300,16 +302,18 @@ func (s *MetricsStorage) UpdateMetricValue(m Metrics) {
 			fmt.Println(err)
 			s.Mu.Unlock()
 		}
-		if !keyExists(m.ID) {
-			_, err := s.DB.ExecContext(context.Background(), "INSERT INTO metrics (name, metric_data) VALUES ($1, $2)", m.ID, metricDataJSON)
+		if s.DB != nil {
+			if !keyExists(m.ID) {
+				_, err := s.DB.ExecContext(context.Background(), "INSERT INTO metrics (name, metric_data) VALUES ($1, $2)", m.ID, metricDataJSON)
+				if err != nil {
+					fmt.Println(err)
+				}
+			}
+
+			_, err = s.DB.ExecContext(context.Background(), "UPDATE metrics SET metric_data = $1 WHERE name = $2", metricDataJSON, m.ID)
 			if err != nil {
 				fmt.Println(err)
 			}
-		}
-
-		_, err = s.DB.ExecContext(context.Background(), "UPDATE metrics SET metric_data = $1 WHERE name = $2", metricDataJSON, m.ID)
-		if err != nil {
-			fmt.Println(err)
 		}
 	}
 
@@ -340,15 +344,18 @@ func (s *MetricsStorage) UpdateMetricsValue(metrics []Metrics) {
 				fmt.Println(err)
 				s.Mu.Unlock()
 			}
-			if !keyExists(m.ID) {
-				_, err := s.DB.ExecContext(context.Background(), "INSERT INTO metrics (name, metric_data) VALUES ($1, $2)", m.ID, metricDataJSON)
+			if s.DB != nil {
+
+				if !keyExists(m.ID) {
+					_, err := s.DB.ExecContext(context.Background(), "INSERT INTO metrics (name, metric_data) VALUES ($1, $2)", m.ID, metricDataJSON)
+					if err != nil {
+						fmt.Println(err)
+					}
+				}
+				_, err = s.DB.ExecContext(context.Background(), "UPDATE metrics SET metric_data = $1 WHERE name = $2", metricDataJSON, m.ID)
 				if err != nil {
 					fmt.Println(err)
 				}
-			}
-			_, err = s.DB.ExecContext(context.Background(), "UPDATE metrics SET metric_data = $1 WHERE name = $2", metricDataJSON, m.ID)
-			if err != nil {
-				fmt.Println(err)
 			}
 
 		} else {
@@ -367,16 +374,18 @@ func (s *MetricsStorage) UpdateMetricsValue(metrics []Metrics) {
 				fmt.Println(err)
 				s.Mu.Unlock()
 			}
-			if !keyExists(m.ID) {
-				_, err := s.DB.ExecContext(context.Background(), "INSERT INTO metrics (name, metric_data) VALUES ($1, $2)", m.ID, metricDataJSON)
+			if s.DB != nil {
+				if !keyExists(m.ID) {
+					_, err := s.DB.ExecContext(context.Background(), "INSERT INTO metrics (name, metric_data) VALUES ($1, $2)", m.ID, metricDataJSON)
+					if err != nil {
+						fmt.Println(err)
+					}
+				}
+
+				_, err = s.DB.ExecContext(context.Background(), "UPDATE metrics SET metric_data = $1 WHERE name = $2", metricDataJSON, m.ID)
 				if err != nil {
 					fmt.Println(err)
 				}
-			}
-
-			_, err = s.DB.ExecContext(context.Background(), "UPDATE metrics SET metric_data = $1 WHERE name = $2", metricDataJSON, m.ID)
-			if err != nil {
-				fmt.Println(err)
 			}
 		}
 
