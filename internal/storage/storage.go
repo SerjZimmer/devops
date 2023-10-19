@@ -136,7 +136,7 @@ func (s *MetricsStorage) PingDB() error {
 
 func NewMetricsStorage(c *config.Config) *MetricsStorage {
 
-	if c.DatabaseDSN != "" {
+	if c.DatabaseDSN == "" {
 		c.DatabaseDSN = "host=localhost user=zimmer password=6969 dbname=test sslmode=disable"
 	}
 
