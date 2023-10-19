@@ -137,9 +137,10 @@ func (s *MetricsStorage) PingDB() error {
 func NewMetricsStorage(c *config.Config) *MetricsStorage {
 
 	m := &MetricsStorage{}
-
+	m.MetricsMap = make(map[string]float64)
+	m.c = c
+	m.DB = nil
 	if c.DatabaseDSN != "" {
-		fmt.Println(123)
 		db, err := sql.Open("pgx", c.DatabaseDSN)
 		if err != nil {
 			panic(err)
@@ -147,9 +148,6 @@ func NewMetricsStorage(c *config.Config) *MetricsStorage {
 		createDB(c.DatabaseDSN)
 		m.DB = db
 	}
-	m.MetricsMap = make(map[string]float64)
-	m.c = c
-	m.DB = nil
 
 	if c.RestoreFlag {
 		_ = m.ReadFromDisk()

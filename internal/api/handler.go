@@ -84,7 +84,6 @@ func (s *Handler) LoggingMiddleware(next http.Handler) http.Handler {
 	})
 }
 func (s *Handler) PingDB(w http.ResponseWriter, r *http.Request) {
-
 	if err := s.stor.PingDB(); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 	}
