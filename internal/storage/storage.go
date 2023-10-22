@@ -167,6 +167,8 @@ func NewMetricsStorage(c *config.Config) *MetricsStorage {
 	}()
 	return m
 }
+
+// ///test
 func (s *MetricsStorage) ReadFromDisk() error {
 	bytes, err := os.ReadFile(s.c.FileStoragePath)
 	if err != nil {
