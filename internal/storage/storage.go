@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/SerjZimmer/devops/internal/config"
 	"github.com/jackc/pgx/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"math/rand"
@@ -113,7 +112,7 @@ func createDB(DBConn string) {
 type MetricsStorage struct {
 	Mu         sync.RWMutex
 	MetricsMap map[string]float64
-	c          *config.Config
+	c          *Config
 	DB         *sql.DB
 }
 
@@ -134,7 +133,7 @@ func (s *MetricsStorage) PingDB() error {
 	return nil
 }
 
-func NewMetricsStorage(c *config.Config) *MetricsStorage {
+func NewMetricsStorage(c *Config) *MetricsStorage {
 
 	m := &MetricsStorage{}
 	m.MetricsMap = make(map[string]float64)
@@ -174,7 +173,11 @@ func (s *MetricsStorage) ReadFromDisk() error {
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(bytes, &s.MetricsMap)
+	err = json.Unmarshal(bytes, &s.MetricsMap)
+	if err != nil {
+		return fmt.Errorf("unmarshal file  %w : %s", err, string(bytes))
+	}
+	return nil
 }
 
 func (s *MetricsStorage) Shutdown() {

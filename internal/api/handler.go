@@ -8,6 +8,7 @@ import (
 	"go.uber.org/zap"
 	"html/template"
 	"net/http"
+	"net/http/httputil"
 	"strconv"
 	"strings"
 	"time"
@@ -68,6 +69,8 @@ func (s *Handler) LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		startTime := time.Now()
 
+		text, _ := httputil.DumpRequest(r, true)
+		s.logger.Info(string(text))
 		logger := s.logger.With(
 			zap.String("URI", r.RequestURI),
 			zap.String("Method", r.Method),
@@ -255,20 +258,23 @@ func (s *Handler) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 func (s *Handler) UpdateMetricsJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
+	s.logger.Sugar().Info("1")
 	var m []storage.Metrics
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&m); err != nil {
 		http.Error(w, "Ошибка при разборе JSON", http.StatusBadRequest)
 		return
 	}
+	s.logger.Sugar().Info("2", m)
 
 	s.stor.UpdateMetricsValue(m)
+
 	jsonResponse, err := json.Marshal(m)
 	if err != nil {
 		http.Error(w, "Ошибка при сериализации JSON", http.StatusInternalServerError)
 		return
 	}
-
+	s.logger.Sugar().Info("3", string(jsonResponse))
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonResponse)
 }

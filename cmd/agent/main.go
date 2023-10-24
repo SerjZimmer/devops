@@ -5,7 +5,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"github.com/SerjZimmer/devops/internal/config"
+	config "github.com/SerjZimmer/devops/internal/config/agent"
 	"github.com/SerjZimmer/devops/internal/storage"
 	"net/http"
 	"runtime"
@@ -14,19 +14,21 @@ import (
 
 func main() {
 
-	c := config.NewConfig()
-	s := storage.NewMetricsStorage(c)
+	c := config.New()
+	s := storage.NewMetricsStorage(c.Storage)
 	go func() {
 		for {
-			time.Sleep(time.Second * time.Duration(c.PollInterval))
+
 			poll(s, c.Address)
+			time.Sleep(time.Second * time.Duration(c.PollInterval))
 		}
 	}()
 
 	for {
-		time.Sleep(time.Duration(c.ReportInterval) * time.Second)
+
 		send(s, c.Address)
 		sendAllInBatches(s, c.Address, 5)
+		time.Sleep(time.Duration(c.ReportInterval) * time.Second)
 	}
 
 }
@@ -147,6 +149,7 @@ func sendAllCompressedContent(data []byte, contentType string, address string) {
 	gzipWriter := gzip.NewWriter(&compressedData)
 
 	// Запись данных в сжатый буфер
+
 	_, err := gzipWriter.Write(data)
 	if err != nil {
 		fmt.Println("Ошибка при сжатии данных:", err)
