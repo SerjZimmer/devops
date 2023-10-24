@@ -93,7 +93,6 @@ func (s *Handler) PingDB(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// test
 func (s *Handler) GetMetricsList(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
@@ -258,14 +257,12 @@ func (s *Handler) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 func (s *Handler) UpdateMetricsJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	s.logger.Sugar().Info("1")
 	var m []storage.Metrics
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&m); err != nil {
 		http.Error(w, "Ошибка при разборе JSON", http.StatusBadRequest)
 		return
 	}
-	s.logger.Sugar().Info("2", m)
 
 	s.stor.UpdateMetricsValue(m)
 
@@ -274,7 +271,6 @@ func (s *Handler) UpdateMetricsJSON(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Ошибка при сериализации JSON", http.StatusInternalServerError)
 		return
 	}
-	s.logger.Sugar().Info("3", string(jsonResponse))
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonResponse)
 }
