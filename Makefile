@@ -1,5 +1,5 @@
 
-DSN = 'postgresql://zimmer:6969@localhost/test?sslmode=disable'
+DSN = 'postgresql://zimmer:6969@localhost:/test?sslmode=disable'
 build: build-agent build-server
 
 build-server:

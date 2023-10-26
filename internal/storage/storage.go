@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/jackc/pgx/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -109,7 +110,7 @@ func createDB(DBConn string) {
 
 }
 
-type MetricsStorage struct {
+type MetricsStorageInternal struct {
 	Mu         sync.RWMutex
 	MetricsMap map[string]float64
 	c          *Config
@@ -117,11 +118,11 @@ type MetricsStorage struct {
 }
 
 func TestMetricStorage() *MetricsStorage {
-	m := &MetricsStorage{
+	m := &MetricsStorageInternal{
 		MetricsMap: make(map[string]float64),
 	}
 
-	return m
+	return &MetricsStorage{m}
 }
 
 func (s *MetricsStorage) PingDB() error {
@@ -135,7 +136,7 @@ func (s *MetricsStorage) PingDB() error {
 
 func NewMetricsStorage(c *Config) *MetricsStorage {
 
-	m := &MetricsStorage{}
+	m := &MetricsStorageInternal{}
 	m.MetricsMap = make(map[string]float64)
 	m.c = c
 	m.DB = nil
@@ -164,11 +165,10 @@ func NewMetricsStorage(c *Config) *MetricsStorage {
 		}
 
 	}()
-	return m
+	return &MetricsStorage{m}
 }
 
-// ///test
-func (s *MetricsStorage) ReadFromDisk() error {
+func (s *MetricsStorageInternal) ReadFromDisk() error {
 	bytes, err := os.ReadFile(s.c.FileStoragePath)
 	if err != nil {
 		return err
@@ -180,11 +180,11 @@ func (s *MetricsStorage) ReadFromDisk() error {
 	return nil
 }
 
-func (s *MetricsStorage) Shutdown() {
+func (s *MetricsStorageInternal) Shutdown() {
 	_ = s.writeToDisk()
 }
 
-func (s *MetricsStorage) writeToDisk() error {
+func (s *MetricsStorageInternal) writeToDisk() error {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
 
@@ -208,7 +208,7 @@ type Metrics struct {
 	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
 }
 
-func (s *MetricsStorage) WriteMetrics(m runtime.MemStats) {
+func (s *MetricsStorageInternal) WriteMetrics(m runtime.MemStats) {
 	s.Mu.Lock()
 	s.MetricsMap["Alloc"] = float64(m.Alloc)
 	s.MetricsMap["BuckHashSys"] = float64(m.BuckHashSys)
@@ -253,8 +253,11 @@ func keyExists(key string) bool {
 	metricKeys = append(metricKeys, key)
 	return false
 }
-func (s *MetricsStorage) UpdateMetricValue(m Metrics) error {
+
+func (s *MetricsStorageInternal) UpdateMetricValue(m Metrics) error {
+
 	s.Mu.Lock()
+	defer s.Mu.Unlock()
 
 	if m.MType == "counter" {
 		if m.Delta == nil {
@@ -272,9 +275,7 @@ func (s *MetricsStorage) UpdateMetricValue(m Metrics) error {
 		}
 
 		metricDataJSON, err := json.Marshal(metricData)
-
 		if err != nil {
-			s.Mu.Unlock()
 			return err
 		}
 		if s.DB != nil {
@@ -304,7 +305,6 @@ func (s *MetricsStorage) UpdateMetricValue(m Metrics) error {
 
 		metricDataJSON, err := json.Marshal(metricData)
 		if err != nil {
-			s.Mu.Unlock()
 			return err
 		}
 		if s.DB != nil {
@@ -322,87 +322,18 @@ func (s *MetricsStorage) UpdateMetricValue(m Metrics) error {
 		}
 	}
 
-	s.Mu.Unlock()
 	return nil
 }
 
-func (s *MetricsStorage) UpdateMetricsValue(metrics []Metrics) error {
-
+func (s *MetricsStorageInternal) UpdateMetricsValue(metrics []Metrics) error {
+	var err error
 	for _, m := range metrics {
-		s.Mu.Lock()
-		if m.MType == "counter" {
-			if m.Delta == nil {
-				v := int64(1)
-				m.Delta = &v
-			}
-			s.MetricsMap[m.ID] += float64(*m.Delta)
-
-			d := int64(s.MetricsMap[m.ID])
-			metricData := Metrics{
-				ID:    m.ID,
-				MType: m.MType,
-				Delta: &d,
-				Value: m.Value,
-			}
-
-			metricDataJSON, err := json.Marshal(metricData)
-
-			if err != nil {
-				s.Mu.Unlock()
-				return err
-
-			}
-			if s.DB != nil {
-
-				if !keyExists(m.ID) {
-					_, err = s.DB.ExecContext(context.Background(), "INSERT INTO metrics (name, metric_data) VALUES ($1, $2)", m.ID, metricDataJSON)
-					if err != nil {
-						return err
-					}
-				}
-				_, err = s.DB.ExecContext(context.Background(), "UPDATE metrics SET metric_data = $1 WHERE name = $2", metricDataJSON, m.ID)
-				if err != nil {
-					return err
-				}
-			}
-
-		} else {
-			d := int64(0)
-			s.MetricsMap[m.ID] = *m.Value
-
-			metricData := Metrics{
-				ID:    m.ID,
-				MType: m.MType,
-				Delta: &d,
-				Value: m.Value,
-			}
-
-			metricDataJSON, err := json.Marshal(metricData)
-			if err != nil {
-				s.Mu.Unlock()
-				return err
-			}
-			if s.DB != nil {
-				if !keyExists(m.ID) {
-					_, err = s.DB.ExecContext(context.Background(), "INSERT INTO metrics (name, metric_data) VALUES ($1, $2)", m.ID, metricDataJSON)
-					if err != nil {
-						return err
-					}
-				}
-
-				_, err = s.DB.ExecContext(context.Background(), "UPDATE metrics SET metric_data = $1 WHERE name = $2", metricDataJSON, m.ID)
-				if err != nil {
-					return err
-				}
-			}
-		}
-
-		s.Mu.Unlock()
+		err = errors.Join(err, s.UpdateMetricValue(m))
 	}
-	return nil
+	return err
 }
 
-func (s *MetricsStorage) GetMetricByName(m Metrics) (float64, error) {
+func (s *MetricsStorageInternal) GetMetricByName(m Metrics) (float64, error) {
 	s.Mu.RLock()
 	value, exists := s.MetricsMap[m.ID]
 	s.Mu.RUnlock()
@@ -412,7 +343,7 @@ func (s *MetricsStorage) GetMetricByName(m Metrics) (float64, error) {
 	return 0, fmt.Errorf("undefind metricName: %v", m.ID)
 }
 
-func (s *MetricsStorage) SortMetricByName() []string {
+func (s *MetricsStorageInternal) SortMetricByName() []string {
 	var keys []string
 	s.Mu.RLock()
 	for key := range s.MetricsMap {
@@ -423,7 +354,7 @@ func (s *MetricsStorage) SortMetricByName() []string {
 	return keys
 }
 
-func (s *MetricsStorage) GetAllMetrics() string {
+func (s *MetricsStorageInternal) GetAllMetrics() string {
 	keys := s.SortMetricByName()
 	var result string
 	for _, key := range keys {
