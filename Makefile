@@ -1,31 +1,48 @@
-# Makefile для сборки и установки агента и сервера
 
-# Компилятор Go
-GO := go
+DSN = 'postgresql://zimmer:6969@localhost/test?sslmode=disable'
+build: build-agent build-server
 
-# Параметры сборки агента
-AGENT_SRC := cmd/agent/main.go
-AGENT_BINARY := cmd/agent/agent
-AGENT_OUTPUT := cmd/agent/agent
+build-server:
+	go build -o cmd/server/server cmd/server/*.go
 
-# Параметры сборки сервера
-SERVER_SRC := cmd/server/main.go
-SERVER_BINARY := cmd/server/server
-SERVER_OUTPUT := cmd/server/server
+build-agent:
+	go build -o cmd/agent/agent cmd/agent/*.go
 
-# Цель по умолчанию: собрать агент и сервер
-all: agent server
 
-# Цель для сборки агента
-agent:
-	$(GO) build -o $(AGENT_OUTPUT) $(AGENT_SRC)
+run-server: build-server
+	./cmd/server/server -a="localhost:8080" -i=0 -d=$(DSN)
 
-# Цель для сборки сервера
-server:
-	$(GO) build -o $(SERVER_OUTPUT) $(SERVER_SRC)
+run-agent: build-agent
+	./cmd/agent/agent -a="localhost:8080" -r=10 -p=2
 
-# Цель для очистки скомпилированных файлов
-clean:
-	rm -f $(AGENT_OUTPUT) $(SERVER_OUTPUT)
+stattest:
+	go vet -vettool=statictest ./...
 
-.PHONY: all agent server clean"
+autotests: build autotests13
+
+autotests1:
+	metricstest -test.v -test.run=^TestIteration1$$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server
+autotests2: autotests1
+	metricstest -test.v -test.run=^TestIteration2[AB]*$$ -source-path=. -agent-binary-path=cmd/agent/agent
+autotests3: autotests2
+	metricstest -test.v -test.run=^TestIteration3[AB]*$$ -source-path=. -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server
+autotests4: autotests3
+	metricstest -test.v -test.run=^TestIteration4$$ -source-path=. -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port="8080"
+autotests5: autotests4
+	metricstest -test.v -test.run=^TestIteration5$$ -source-path=. -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port="8080"
+autotests6: autotests5
+	metricstest -test.v -test.run=^TestIteration6$$ -source-path=. -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port="8080"
+autotests7: autotests6
+	metricstest -test.v -test.run=^TestIteration7$$ -source-path=. -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port="8080"
+autotests8: autotests7
+	metricstest -test.v -test.run=^TestIteration8$$ -source-path=. -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port="8080"
+autotests9: autotests8
+	metricstest -test.v -test.run=^TestIteration9$$ -source-path=. -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port="8080" -file-storage-path=/tmp/metrics-db.json
+autotests10: autotests9
+	metricstest -test.v -test.run=^TestIteration10[AB]$$ -source-path=. -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port="8080" -database-dsn=$(DSN)
+autotests11: autotests10
+	metricstest -test.v -test.run=^TestIteration11$$ -source-path=. -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port="8080" -database-dsn=$(DSN)
+autotests12: autotests11
+	metricstest -test.v -test.run=^TestIteration12$$ -source-path=. -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port="8080" -database-dsn=$(DSN)
+autotests13: autotests12
+	metricstest -test.v -test.run=^TestIteration13$$ -source-path=. -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port="8080" -database-dsn=$(DSN)
