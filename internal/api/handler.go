@@ -2,9 +2,12 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/SerjZimmer/devops/internal/storage"
+	"github.com/jackc/pgerrcode"
 	_ "github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5/pgconn"
 	"go.uber.org/zap"
 	"html/template"
 	"net/http"
@@ -34,8 +37,8 @@ var tmpl = template.Must(template.New("metricsList").Parse(metricsListTemplate))
 
 type metricsStorage interface {
 	GetMetricByName(m storage.Metrics) (float64, error)
-	UpdateMetricValue(m storage.Metrics)
-	UpdateMetricsValue(m []storage.Metrics)
+	UpdateMetricValue(m storage.Metrics) error
+	UpdateMetricsValue(m []storage.Metrics) error
 	SortMetricByName() []string
 	GetAllMetrics() string
 	PingDB() error
@@ -224,9 +227,23 @@ func (s *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	m.Delta = &iv
 	m.Value = &value
 
-	s.stor.UpdateMetricValue(m)
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "Метрика успешно принята: %s/%s/%s\n", metricType, metricName, metricValue)
+	err = s.stor.UpdateMetricValue(m)
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgerrcode.IsConnectionException(pgErr.Code) {
+		if err != nil {
+			try := 1
+			for err != nil && try < 4 {
+				time.Sleep(time.Duration(2*(try-1)+1) * time.Second)
+				err = s.stor.UpdateMetricValue(m)
+				try++
+			}
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "Метрика успешно принята: %s/%s/%s\n", metricType, metricName, metricValue)
+	}
 }
 
 func (s *Handler) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
@@ -243,15 +260,29 @@ func (s *Handler) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Некорректные данные в JSON", http.StatusBadRequest)
 		return
 	}
-	s.stor.UpdateMetricValue(m)
-	jsonResponse, err := json.Marshal(m)
-	if err != nil {
-		http.Error(w, "Ошибка при сериализации JSON", http.StatusInternalServerError)
-		return
-	}
+	err := s.stor.UpdateMetricValue(m)
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgerrcode.IsConnectionException(pgErr.Code) {
+		if err != nil {
+			try := 1
+			for err != nil && try < 4 {
+				time.Sleep(time.Duration(2*(try-1)+1) * time.Second)
+				err = s.stor.UpdateMetricValue(m)
+				try++
+			}
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		jsonResponse, err := json.Marshal(m)
+		if err != nil {
+			http.Error(w, "Ошибка при сериализации JSON", http.StatusInternalServerError)
+			return
+		}
 
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonResponse)
+		w.WriteHeader(http.StatusOK)
+		w.Write(jsonResponse)
+	}
 }
 
 func (s *Handler) UpdateMetricsJSON(w http.ResponseWriter, r *http.Request) {
@@ -264,15 +295,29 @@ func (s *Handler) UpdateMetricsJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.stor.UpdateMetricsValue(m)
+	err := s.stor.UpdateMetricsValue(m)
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgerrcode.IsConnectionException(pgErr.Code) {
+		if err != nil {
+			try := 1
+			for err != nil && try < 4 {
+				time.Sleep(time.Duration(2*(try-1)+1) * time.Second)
+				err = s.stor.UpdateMetricsValue(m)
+				try++
+			}
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 
-	jsonResponse, err := json.Marshal(m)
-	if err != nil {
-		http.Error(w, "Ошибка при сериализации JSON", http.StatusInternalServerError)
-		return
+		jsonResponse, err := json.Marshal(m)
+		if err != nil {
+			http.Error(w, "Ошибка при сериализации JSON", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write(jsonResponse)
 	}
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonResponse)
 }
 
 func isValidMetrics(m storage.Metrics) bool {

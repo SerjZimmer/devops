@@ -253,7 +253,7 @@ func keyExists(key string) bool {
 	metricKeys = append(metricKeys, key)
 	return false
 }
-func (s *MetricsStorage) UpdateMetricValue(m Metrics) {
+func (s *MetricsStorage) UpdateMetricValue(m Metrics) error {
 	s.Mu.Lock()
 
 	if m.MType == "counter" {
@@ -272,22 +272,24 @@ func (s *MetricsStorage) UpdateMetricValue(m Metrics) {
 		}
 
 		metricDataJSON, err := json.Marshal(metricData)
+
 		if err != nil {
-			fmt.Println(err)
 			s.Mu.Unlock()
+			return err
 		}
 		if s.DB != nil {
 			if !keyExists(m.ID) {
-				_, err := s.DB.ExecContext(context.Background(), "INSERT INTO metrics (name, metric_data) VALUES ($1, $2)", m.ID, metricDataJSON)
+				_, err = s.DB.ExecContext(context.Background(), "INSERT INTO metrics (name, metric_data) VALUES ($1, $2)", m.ID, metricDataJSON)
 				if err != nil {
-					fmt.Println(err)
+					return err
 				}
 			}
 			_, err = s.DB.ExecContext(context.Background(), "UPDATE metrics SET metric_data = $1 WHERE name = $2", metricDataJSON, m.ID)
 			if err != nil {
-				fmt.Println(err)
+				return err
 			}
 		}
+		return nil
 
 	} else {
 		d := int64(0)
@@ -302,28 +304,29 @@ func (s *MetricsStorage) UpdateMetricValue(m Metrics) {
 
 		metricDataJSON, err := json.Marshal(metricData)
 		if err != nil {
-			fmt.Println(err)
 			s.Mu.Unlock()
+			return err
 		}
 		if s.DB != nil {
 			if !keyExists(m.ID) {
-				_, err := s.DB.ExecContext(context.Background(), "INSERT INTO metrics (name, metric_data) VALUES ($1, $2)", m.ID, metricDataJSON)
+				_, err = s.DB.ExecContext(context.Background(), "INSERT INTO metrics (name, metric_data) VALUES ($1, $2)", m.ID, metricDataJSON)
 				if err != nil {
-					fmt.Println(err)
+					return err
 				}
 			}
 
 			_, err = s.DB.ExecContext(context.Background(), "UPDATE metrics SET metric_data = $1 WHERE name = $2", metricDataJSON, m.ID)
 			if err != nil {
-				fmt.Println(err)
+				return err
 			}
 		}
 	}
 
 	s.Mu.Unlock()
+	return nil
 }
 
-func (s *MetricsStorage) UpdateMetricsValue(metrics []Metrics) {
+func (s *MetricsStorage) UpdateMetricsValue(metrics []Metrics) error {
 
 	for _, m := range metrics {
 		s.Mu.Lock()
@@ -343,21 +346,23 @@ func (s *MetricsStorage) UpdateMetricsValue(metrics []Metrics) {
 			}
 
 			metricDataJSON, err := json.Marshal(metricData)
+
 			if err != nil {
-				fmt.Println(err)
 				s.Mu.Unlock()
+				return err
+
 			}
 			if s.DB != nil {
 
 				if !keyExists(m.ID) {
-					_, err := s.DB.ExecContext(context.Background(), "INSERT INTO metrics (name, metric_data) VALUES ($1, $2)", m.ID, metricDataJSON)
+					_, err = s.DB.ExecContext(context.Background(), "INSERT INTO metrics (name, metric_data) VALUES ($1, $2)", m.ID, metricDataJSON)
 					if err != nil {
-						fmt.Println(err)
+						return err
 					}
 				}
 				_, err = s.DB.ExecContext(context.Background(), "UPDATE metrics SET metric_data = $1 WHERE name = $2", metricDataJSON, m.ID)
 				if err != nil {
-					fmt.Println(err)
+					return err
 				}
 			}
 
@@ -374,27 +379,27 @@ func (s *MetricsStorage) UpdateMetricsValue(metrics []Metrics) {
 
 			metricDataJSON, err := json.Marshal(metricData)
 			if err != nil {
-				fmt.Println(err)
 				s.Mu.Unlock()
+				return err
 			}
 			if s.DB != nil {
 				if !keyExists(m.ID) {
-					_, err := s.DB.ExecContext(context.Background(), "INSERT INTO metrics (name, metric_data) VALUES ($1, $2)", m.ID, metricDataJSON)
+					_, err = s.DB.ExecContext(context.Background(), "INSERT INTO metrics (name, metric_data) VALUES ($1, $2)", m.ID, metricDataJSON)
 					if err != nil {
-						fmt.Println(err)
+						return err
 					}
 				}
 
 				_, err = s.DB.ExecContext(context.Background(), "UPDATE metrics SET metric_data = $1 WHERE name = $2", metricDataJSON, m.ID)
 				if err != nil {
-					fmt.Println(err)
+					return err
 				}
 			}
 		}
 
 		s.Mu.Unlock()
 	}
-
+	return nil
 }
 
 func (s *MetricsStorage) GetMetricByName(m Metrics) (float64, error) {
