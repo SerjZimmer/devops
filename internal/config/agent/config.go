@@ -12,6 +12,7 @@ type Config struct {
 	PollInterval   int
 	ReportInterval int
 	Storage        *storage.Config
+	Key            string
 }
 
 func New() *Config {
@@ -27,6 +28,8 @@ func New() *Config {
 	flag.StringVar(&config.Address, "a", getEnv("ADDRESS", "localhost:8080"), "Address of the HTTP server endpoint")
 	flag.IntVar(&config.ReportInterval, "r", getEnvAsInt("REPORT_INTERVAL", 10), "Frequency of sending metrics to the server")
 	flag.IntVar(&config.PollInterval, "p", getEnvAsInt("POLL_INTERVAL", 2), "Frequency of polling metrics from the runtime package")
+	flag.StringVar(&config.Key, "k", getEnv("KEY", ""), "API Key for authentication")
+
 	flag.Parse()
 	return config
 }

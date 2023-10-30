@@ -25,7 +25,6 @@ func main() {
 	}()
 
 	for {
-
 		send(s, c.Address)
 		sendAllInBatches(s, c.Address, 5)
 		time.Sleep(time.Duration(c.ReportInterval) * time.Second)
@@ -101,74 +100,29 @@ func sendAllInBatches(s *storage.MetricsStorage, address string, batchSize int) 
 	s.Mu.Unlock()
 }
 
-func sendCompressedContent(data []byte, contentType string, address string) {
-	// Создание буфера для хранения сжатых данных
+func doReq(data []byte, contentType, address, path string) {
+	// Create a buffer to store compressed data
 	var compressedData bytes.Buffer
 	gzipWriter := gzip.NewWriter(&compressedData)
 
-	// Запись данных в сжатый буфер
+	// Write data to a compressed buffer
 	_, err := gzipWriter.Write(data)
 	if err != nil {
 		fmt.Println("Ошибка при сжатии данных:", err)
 		return
 	}
 
-	// Завершение записи и закрытие сжатого буфера
+	// Complete recording and close the compressed buffer
 	gzipWriter.Close()
 
-	serverURL := fmt.Sprintf("http://%v/update/", address)
+	serverURL := fmt.Sprintf("http://%v/%v/", address, path)
 
-	// Создание HTTP-запроса с сжатыми данными
 	req, err := http.NewRequest("POST", serverURL, &compressedData)
 	if err != nil {
 		fmt.Println("Ошибка при создании запроса:", err)
 		return
 	}
 
-	// Установка заголовков для указания сжатого формата и типа контента
-	req.Header.Set("Content-Type", contentType)
-	req.Header.Set("Content-Encoding", "gzip")
-
-	client := http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println("Ошибка при отправке данных на сервер:", err, serverURL)
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		fmt.Println("Ошибка при отправке данных на сервер. Код ответа:", resp.StatusCode)
-		return
-	}
-}
-
-func sendAllCompressedContent(data []byte, contentType string, address string) {
-	// Создание буфера для хранения сжатых данных
-	var compressedData bytes.Buffer
-	gzipWriter := gzip.NewWriter(&compressedData)
-
-	// Запись данных в сжатый буфер
-
-	_, err := gzipWriter.Write(data)
-	if err != nil {
-		fmt.Println("Ошибка при сжатии данных:", err)
-		return
-	}
-
-	// Завершение записи и закрытие сжатого буфера
-	gzipWriter.Close()
-
-	serverURL := fmt.Sprintf("http://%v/updates/", address)
-
-	// Создание HTTP-запроса с сжатыми данными
-	req, err := http.NewRequest("POST", serverURL, &compressedData)
-	if err != nil {
-		fmt.Println("Ошибка при создании запроса:", err)
-		return
-	}
-
-	// Установка заголовков для указания сжатого формата и типа контента
 	req.Header.Set("Content-Type", contentType)
 	req.Header.Set("Content-Encoding", "gzip")
 
@@ -193,7 +147,7 @@ func sendMetric(m storage.Metrics, address string) {
 		return
 	}
 
-	sendCompressedContent(jsonData, "application/json", address)
+	doReq(jsonData, "application/json", address, "update")
 }
 
 func sendMetricsBatch(m []storage.Metrics, address string) {
@@ -202,5 +156,5 @@ func sendMetricsBatch(m []storage.Metrics, address string) {
 		fmt.Println("Ошибка при маршалинге JSON:", err)
 
 	}
-	sendAllCompressedContent(jsonData, "application/json", address)
+	doReq(jsonData, "application/json", address, "updates")
 }
