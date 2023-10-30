@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/SerjZimmer/devops/internal/api"
-	"github.com/SerjZimmer/devops/internal/config"
+	config "github.com/SerjZimmer/devops/internal/config/server"
 	"github.com/SerjZimmer/devops/internal/gzip"
 	"github.com/SerjZimmer/devops/internal/storage"
 	"github.com/gorilla/mux"
@@ -23,8 +23,8 @@ var (
 
 func main() {
 
-	c := config.NewConfig()
-	st := storage.NewMetricsStorage(c)
+	c := config.New()
+	st := storage.NewMetricsStorage(c.Storage)
 	handler := api.NewHandler(st)
 
 	go func() {
@@ -42,6 +42,7 @@ func main() {
 	}()
 
 	<-shutdownChan
+	defer st.DB.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := server.Shutdown(ctx); err != nil {
@@ -85,6 +86,10 @@ func mRouter(handler *api.Handler) {
 	r.HandleFunc("/", handler.GetMetricsList).Methods("GET")
 
 	r.HandleFunc("/update/", handler.UpdateMetricJSON).Methods("POST")
+	r.HandleFunc("/updates/", handler.UpdateMetricsJSON).Methods("POST")
 	r.HandleFunc("/value/", handler.GetMetricJSON).Methods("POST")
+
+	r.HandleFunc("/ping", handler.PingDB).Methods("GET")
+
 	http.Handle("/", r)
 }

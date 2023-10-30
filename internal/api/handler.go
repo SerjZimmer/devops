@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/SerjZimmer/devops/internal/storage"
+	_ "github.com/jackc/pgx/v4"
 	"go.uber.org/zap"
 	"html/template"
 	"net/http"
+	"net/http/httputil"
 	"strconv"
 	"strings"
 	"time"
@@ -32,9 +34,11 @@ var tmpl = template.Must(template.New("metricsList").Parse(metricsListTemplate))
 
 type metricsStorage interface {
 	GetMetricByName(m storage.Metrics) (float64, error)
-	UpdateMetricValue(m storage.Metrics)
+	UpdateMetricValue(m storage.Metrics) error
+	UpdateMetricsValue(m []storage.Metrics) error
 	SortMetricByName() []string
 	GetAllMetrics() string
+	PingDB() error
 }
 
 type Handler struct {
@@ -65,6 +69,8 @@ func (s *Handler) LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		startTime := time.Now()
 
+		text, _ := httputil.DumpRequest(r, true)
+		s.logger.Info(string(text))
 		logger := s.logger.With(
 			zap.String("URI", r.RequestURI),
 			zap.String("Method", r.Method),
@@ -79,6 +85,12 @@ func (s *Handler) LoggingMiddleware(next http.Handler) http.Handler {
 			zap.Duration("Duration", time.Since(startTime)),
 		)
 	})
+}
+func (s *Handler) PingDB(w http.ResponseWriter, r *http.Request) {
+	if err := s.stor.PingDB(); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
 func (s *Handler) GetMetricsList(w http.ResponseWriter, r *http.Request) {
@@ -154,7 +166,7 @@ func (s *Handler) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 
 	value, err := s.stor.GetMetricByName(m)
 	if err != nil {
-		http.Error(w, "Неверное имя метрики", http.StatusNotFound)
+		http.Error(w, "Неверное  имя метрики", http.StatusNotFound)
 		return
 	}
 
@@ -212,10 +224,17 @@ func (s *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	m.Delta = &iv
 	m.Value = &value
 
-	s.stor.UpdateMetricValue(m)
+	err = s.stor.UpdateMetricValue(m)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "Метрика успешно принята: %s/%s/%s\n", metricType, metricName, metricValue)
+
 }
+
 func (s *Handler) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -230,7 +249,12 @@ func (s *Handler) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Некорректные данные в JSON", http.StatusBadRequest)
 		return
 	}
-	s.stor.UpdateMetricValue(m)
+	err := s.stor.UpdateMetricValue(m)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	jsonResponse, err := json.Marshal(m)
 	if err != nil {
 		http.Error(w, "Ошибка при сериализации JSON", http.StatusInternalServerError)
@@ -239,6 +263,33 @@ func (s *Handler) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonResponse)
+
+}
+
+func (s *Handler) UpdateMetricsJSON(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	var m []storage.Metrics
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&m); err != nil {
+		http.Error(w, "Ошибка при разборе JSON", http.StatusBadRequest)
+		return
+	}
+
+	err := s.stor.UpdateMetricsValue(m)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	jsonResponse, err := json.Marshal(m)
+	if err != nil {
+		http.Error(w, "Ошибка при сериализации JSON", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonResponse)
+
 }
 
 func isValidMetrics(m storage.Metrics) bool {
