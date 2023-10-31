@@ -1,6 +1,8 @@
 package api
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/SerjZimmer/devops/internal/storage"
@@ -196,43 +198,56 @@ func (s *Handler) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 func (s *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) != 5 {
-		http.Error(w, "Неверный формат URL", http.StatusBadRequest)
-		return
+	key := r.FormValue("key")
+	data := r.URL.Path
+	if key != "" {
+		parts := strings.Split(r.URL.Path, "/")
+		if len(parts) != 5 {
+			http.Error(w, "Неверный формат URL", http.StatusBadRequest)
+			return
+		}
+
+		metricType := parts[2]
+		metricName := parts[3]
+		metricValue := parts[4]
+
+		if metricType != "gauge" && metricType != "counter" {
+			http.Error(w, "Неверный тип метрики", http.StatusBadRequest)
+			return
+		}
+
+		value, err := parseNumeric(metricValue)
+		if err != nil {
+			http.Error(w, "Значение метрики должно быть числом", http.StatusBadRequest)
+			return
+		}
+
+		var m storage.Metrics
+		m.ID = metricName
+		m.MType = metricType
+		iv := int64(value)
+		m.Delta = &iv
+		m.Value = &value
+
+		err = s.stor.UpdateMetricValue(m)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		responseHash := calculateHash(data)
+
+		w.Header().Set("HashSHA256", responseHash)
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "Метрика успешно принята: %s/%s/%s\n", metricType, metricName, metricValue)
+	} else {
+		http.Error(w, "Invalid key or hash", http.StatusBadRequest)
 	}
-
-	metricType := parts[2]
-	metricName := parts[3]
-	metricValue := parts[4]
-
-	if metricType != "gauge" && metricType != "counter" {
-		http.Error(w, "Неверный тип метрики", http.StatusBadRequest)
-		return
-	}
-
-	value, err := parseNumeric(metricValue)
-	if err != nil {
-		http.Error(w, "Значение метрики должно быть числом", http.StatusBadRequest)
-		return
-	}
-
-	var m storage.Metrics
-	m.ID = metricName
-	m.MType = metricType
-	iv := int64(value)
-	m.Delta = &iv
-	m.Value = &value
-
-	err = s.stor.UpdateMetricValue(m)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "Метрика успешно принята: %s/%s/%s\n", metricType, metricName, metricValue)
-
+}
+func calculateHash(data string) string {
+	hasher := sha256.New()
+	hasher.Write([]byte(data))
+	hash := hex.EncodeToString(hasher.Sum(nil))
+	return hash
 }
 
 func (s *Handler) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
