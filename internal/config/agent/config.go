@@ -23,6 +23,7 @@ func New() *Config {
 		Address:        getEnv("ADDRESS", "localhost:8080"),
 		PollInterval:   getEnvAsInt("POLL_INTERVAL", 2),
 		ReportInterval: getEnvAsInt("REPORT_INTERVAL", 10),
+		Key:            getEnv("KEY", ""),
 	}
 
 	flag.StringVar(&config.Address, "a", getEnv("ADDRESS", "localhost:8080"), "Address of the HTTP server endpoint")
@@ -51,4 +52,3 @@ func getEnvAsInt(key string, defaultValue int) int {
 	}
 	return defaultValue
 }
-

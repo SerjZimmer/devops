@@ -19,10 +19,12 @@ func New() *Config {
 		Address:  getEnv("ADDRESS", "localhost:8080"),
 		LogLevel: getEnv("LOG_LEVEL", "info"),
 		Storage:  StorageConfig,
+		Key:      getEnv("KEY", ""),
 	}
-	flag.StringVar(&config.Key, "k", getEnv("KEY", ""), "API Key for authentication")
+
 	flag.StringVar(&config.Address, "a", getEnv("ADDRESS", "localhost:8080"), "Address of the HTTP server endpoint")
 	flag.StringVar(&config.LogLevel, "l", getEnv("LOG_LEVEL", "info"), "Logging level (e.g., 'info', 'debug')")
+	flag.StringVar(&config.Key, "k", getEnv("KEY", ""), "API Key for authentication")
 	flag.Parse()
 	return config
 }
