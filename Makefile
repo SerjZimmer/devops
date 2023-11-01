@@ -21,7 +21,7 @@ stattest:
 autotests: build autotests14
 
 autotests1:
-	metricstest -test.v -test.run=^TestIteration1$$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server key="testkey"
+	metricstest -test.v -test.run=^TestIteration1$$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server
 autotests2: autotests1
 	metricstest -test.v -test.run=^TestIteration2[AB]*$$ -source-path=. -agent-binary-path=cmd/agent/agent
 autotests3: autotests2

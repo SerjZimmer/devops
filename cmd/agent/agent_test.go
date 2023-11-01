@@ -38,7 +38,7 @@ func Test_sendMetric(t *testing.T) {
 }
 
 func Test_sendMetricCounter(t *testing.T) {
-	c := config.New()
+	c := config.Config{}
 	// Create a test HTTP server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -56,5 +56,5 @@ func Test_sendMetricCounter(t *testing.T) {
 	m.Delta = &vi
 
 	// Call sendMetric
-	sendMetric(m, c)
+	sendMetric(m, &c)
 }
