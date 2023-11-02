@@ -13,6 +13,7 @@ type Config struct {
 	ReportInterval int
 	Storage        *storage.Config
 	Key            string
+	RateLimit      int
 }
 
 func New() *Config {
@@ -24,12 +25,14 @@ func New() *Config {
 		PollInterval:   getEnvAsInt("POLL_INTERVAL", 2),
 		ReportInterval: getEnvAsInt("REPORT_INTERVAL", 10),
 		Key:            getEnv("KEY", ""),
+		RateLimit:      getEnvAsInt("RATE_LIMIT", 1),
 	}
 
 	flag.StringVar(&config.Address, "a", getEnv("ADDRESS", "localhost:8080"), "Address of the HTTP server endpoint")
 	flag.IntVar(&config.ReportInterval, "r", getEnvAsInt("REPORT_INTERVAL", 10), "Frequency of sending metrics to the server")
 	flag.IntVar(&config.PollInterval, "p", getEnvAsInt("POLL_INTERVAL", 2), "Frequency of polling metrics from the runtime package")
 	flag.StringVar(&config.Key, "k", getEnv("KEY", ""), "API Key for authentication")
+	flag.IntVar(&config.RateLimit, "l", getEnvAsInt("RATE_LIMIT", 1), "Rate limit value")
 
 	flag.Parse()
 	return config
