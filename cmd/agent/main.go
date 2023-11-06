@@ -149,13 +149,13 @@ func compressData(data []byte) (bytes.Buffer, error) {
 	// Write data to the compressed buffer
 	_, err := gzipWriter.Write(data)
 	if err != nil {
-		return compressedData, fmt.Errorf("Ошибка при записи сжатых данных: %v", err)
+		return compressedData, fmt.Errorf("ошибка при записи сжатых данных: %v", err)
 	}
 
 	// Complete writing and close the compressed buffer
 	err = gzipWriter.Close()
 	if err != nil {
-		return compressedData, fmt.Errorf("Ошибка при закрытии сжатого буфера: %v", err)
+		return compressedData, fmt.Errorf("ошибка при закрытии сжатого буфера: %v", err)
 	}
 
 	return compressedData, nil
@@ -163,7 +163,7 @@ func compressData(data []byte) (bytes.Buffer, error) {
 func createHTTPRequest(serverURL, contentType, key string, compressedData *bytes.Buffer) (*http.Request, error) {
 	req, err := http.NewRequest("POST", serverURL, compressedData)
 	if err != nil {
-		return nil, fmt.Errorf("Ошибка при создании запроса: %v", err)
+		return nil, fmt.Errorf("ошибка при создании запроса: %v", err)
 	}
 
 	req.Header.Set("Content-Type", contentType)
