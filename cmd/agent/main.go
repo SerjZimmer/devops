@@ -104,19 +104,11 @@ func sendAllInBatches(s *storage.MetricsStorage, c *config.Config, batchSize int
 }
 
 func doReq(data []byte, contentType, path string, c *config.Config) {
-	// Create a buffer to store compressed data
-	var compressedData bytes.Buffer
-	gzipWriter := gzip.NewWriter(&compressedData)
-
-	// Write data to a compressed buffer
-	_, err := gzipWriter.Write(data)
+	compressedData, err := compressData(data)
 	if err != nil {
 		fmt.Println("Ошибка при сжатии данных:", err)
 		return
 	}
-
-	// Complete recording and close the compressed buffer
-	gzipWriter.Close()
 
 	serverURL := fmt.Sprintf("http://%v/%v/", c.Address, path)
 
@@ -147,6 +139,43 @@ func doReq(data []byte, contentType, path string, c *config.Config) {
 		fmt.Println("Ошибка при отправке данных на сервер. Код ответа:", resp.StatusCode)
 		return
 	}
+}
+
+func compressData(data []byte) (bytes.Buffer, error) {
+	// Create a buffer to store compressed data
+	var compressedData bytes.Buffer
+	gzipWriter := gzip.NewWriter(&compressedData)
+
+	// Write data to the compressed buffer
+	_, err := gzipWriter.Write(data)
+	if err != nil {
+		return compressedData, fmt.Errorf("Ошибка при записи сжатых данных: %v", err)
+	}
+
+	// Complete writing and close the compressed buffer
+	err = gzipWriter.Close()
+	if err != nil {
+		return compressedData, fmt.Errorf("Ошибка при закрытии сжатого буфера: %v", err)
+	}
+
+	return compressedData, nil
+}
+func createHTTPRequest(serverURL, contentType, key string, compressedData *bytes.Buffer) (*http.Request, error) {
+	req, err := http.NewRequest("POST", serverURL, compressedData)
+	if err != nil {
+		return nil, fmt.Errorf("Ошибка при создании запроса: %v", err)
+	}
+
+	req.Header.Set("Content-Type", contentType)
+	req.Header.Set("Content-Encoding", "gzip")
+	if key != "" {
+		hasher := sha256.New()
+		hasher.Write([]byte(key))
+		hash := hex.EncodeToString(hasher.Sum(nil))
+		req.Header.Set("HashSHA256", hash)
+	}
+
+	return req, nil
 }
 
 func sendMetric(m storage.Metrics, c *config.Config) {

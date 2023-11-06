@@ -66,7 +66,18 @@ func NewHandler(stor metricsStorage) *Handler {
 		logger: logger,
 	}
 }
+func (s *Handler) HashSHA256Middleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		key := r.Header.Get("HashSHA256")
+		if key != "" {
+			data := r.URL.Path
+			responseHash := calculateHash(data)
+			w.Header().Set("HashSHA256", responseHash)
+		}
 
+		next.ServeHTTP(w, r)
+	})
+}
 func (s *Handler) LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		startTime := time.Now()
@@ -231,12 +242,6 @@ func (s *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	key := r.Header.Get("HashSHA256")
-	if key != "" {
-		data := r.URL.Path
-		responseHash := calculateHash(data)
-		w.Header().Set("HashSHA256", responseHash)
-	}
 
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "Метрика успешно принята: %s/%s/%s\n", metricType, metricName, metricValue)
@@ -274,12 +279,6 @@ func (s *Handler) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Ошибка при сериализации JSON", http.StatusInternalServerError)
 		return
 	}
-	key := r.Header.Get("HashSHA256")
-	if key != "" {
-		data := r.URL.Path
-		responseHash := calculateHash(data)
-		w.Header().Set("HashSHA256", responseHash)
-	}
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonResponse)
 
@@ -305,12 +304,6 @@ func (s *Handler) UpdateMetricsJSON(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "Ошибка при сериализации JSON", http.StatusInternalServerError)
 		return
-	}
-	key := r.Header.Get("HashSHA256")
-	if key != "" {
-		data := r.URL.Path
-		responseHash := calculateHash(data)
-		w.Header().Set("HashSHA256", responseHash)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonResponse)
