@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	config "github.com/SerjZimmer/devops/internal/config/agent"
@@ -18,28 +20,27 @@ func main() {
 	s := storage.NewMetricsStorage(c.Storage)
 	go func() {
 		for {
-
-			poll(s, c.Address)
+			poll(s)
 			time.Sleep(time.Second * time.Duration(c.PollInterval))
 		}
 	}()
 
 	for {
-
-		send(s, c.Address)
-		sendAllInBatches(s, c.Address, 5)
+		send(s, c)
+		sendAllInBatches(s, c, 5)
 		time.Sleep(time.Duration(c.ReportInterval) * time.Second)
 	}
 
 }
 
-func poll(s *storage.MetricsStorage, address string) {
+func poll(s *storage.MetricsStorage) {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 	s.WriteMetrics(m)
 }
 
-func send(s *storage.MetricsStorage, address string) {
+func send(s *storage.MetricsStorage, c *config.Config) {
+
 	s.Mu.Lock()
 	var m storage.Metrics
 	for metricName, metricValue := range s.MetricsMap {
@@ -59,12 +60,12 @@ func send(s *storage.MetricsStorage, address string) {
 			}
 		}
 
-		sendMetric(m, address)
+		sendMetric(m, c)
 	}
 	s.Mu.Unlock()
 }
 
-func sendAllInBatches(s *storage.MetricsStorage, address string, batchSize int) {
+func sendAllInBatches(s *storage.MetricsStorage, c *config.Config, batchSize int) {
 	s.Mu.Lock()
 	var metrics []storage.Metrics
 
@@ -89,45 +90,42 @@ func sendAllInBatches(s *storage.MetricsStorage, address string, batchSize int) 
 		metrics = append(metrics, m)
 
 		if len(metrics) == batchSize {
-			sendMetricsBatch(metrics, address)
+
+			sendMetricsBatch(metrics, c)
 			metrics = nil
 		}
 	}
 
 	if len(metrics) > 0 {
-		sendMetricsBatch(metrics, address)
+		sendMetricsBatch(metrics, c)
 	}
 
 	s.Mu.Unlock()
 }
 
-func sendCompressedContent(data []byte, contentType string, address string) {
-	// Создание буфера для хранения сжатых данных
-	var compressedData bytes.Buffer
-	gzipWriter := gzip.NewWriter(&compressedData)
-
-	// Запись данных в сжатый буфер
-	_, err := gzipWriter.Write(data)
+func doReq(data []byte, contentType, path string, c *config.Config) {
+	compressedData, err := compressData(data)
 	if err != nil {
 		fmt.Println("Ошибка при сжатии данных:", err)
 		return
 	}
 
-	// Завершение записи и закрытие сжатого буфера
-	gzipWriter.Close()
+	serverURL := fmt.Sprintf("http://%v/%v/", c.Address, path)
 
-	serverURL := fmt.Sprintf("http://%v/update/", address)
-
-	// Создание HTTP-запроса с сжатыми данными
 	req, err := http.NewRequest("POST", serverURL, &compressedData)
 	if err != nil {
 		fmt.Println("Ошибка при создании запроса:", err)
 		return
 	}
 
-	// Установка заголовков для указания сжатого формата и типа контента
 	req.Header.Set("Content-Type", contentType)
 	req.Header.Set("Content-Encoding", "gzip")
+	if c.Key != "" {
+		hasher := sha256.New()
+		hasher.Write([]byte(c.Key))
+		hash := hex.EncodeToString(hasher.Sum(nil))
+		req.Header.Set("HashSHA256", hash)
+	}
 
 	client := http.Client{}
 	resp, err := client.Do(req)
@@ -143,64 +141,58 @@ func sendCompressedContent(data []byte, contentType string, address string) {
 	}
 }
 
-func sendAllCompressedContent(data []byte, contentType string, address string) {
-	// Создание буфера для хранения сжатых данных
+func compressData(data []byte) (bytes.Buffer, error) {
+	// Create a buffer to store compressed data
 	var compressedData bytes.Buffer
 	gzipWriter := gzip.NewWriter(&compressedData)
 
-	// Запись данных в сжатый буфер
-
+	// Write data to the compressed buffer
 	_, err := gzipWriter.Write(data)
 	if err != nil {
-		fmt.Println("Ошибка при сжатии данных:", err)
-		return
+		return compressedData, fmt.Errorf("ошибка при записи сжатых данных: %v", err)
 	}
 
-	// Завершение записи и закрытие сжатого буфера
-	gzipWriter.Close()
-
-	serverURL := fmt.Sprintf("http://%v/updates/", address)
-
-	// Создание HTTP-запроса с сжатыми данными
-	req, err := http.NewRequest("POST", serverURL, &compressedData)
+	// Complete writing and close the compressed buffer
+	err = gzipWriter.Close()
 	if err != nil {
-		fmt.Println("Ошибка при создании запроса:", err)
-		return
+		return compressedData, fmt.Errorf("ошибка при закрытии сжатого буфера: %v", err)
 	}
 
-	// Установка заголовков для указания сжатого формата и типа контента
+	return compressedData, nil
+}
+func createHTTPRequest(serverURL, contentType, key string, compressedData *bytes.Buffer) (*http.Request, error) {
+	req, err := http.NewRequest("POST", serverURL, compressedData)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка при создании запроса: %v", err)
+	}
+
 	req.Header.Set("Content-Type", contentType)
 	req.Header.Set("Content-Encoding", "gzip")
-
-	client := http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println("Ошибка при отправке данных на сервер:", err, serverURL)
-		return
+	if key != "" {
+		hasher := sha256.New()
+		hasher.Write([]byte(key))
+		hash := hex.EncodeToString(hasher.Sum(nil))
+		req.Header.Set("HashSHA256", hash)
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		fmt.Println("Ошибка при отправке данных на сервер. Код ответа:", resp.StatusCode)
-		return
-	}
+	return req, nil
 }
 
-func sendMetric(m storage.Metrics, address string) {
+func sendMetric(m storage.Metrics, c *config.Config) {
 	jsonData, err := json.Marshal(m)
 	if err != nil {
 		fmt.Println("Ошибка при маршалинге JSON:", err)
 		return
 	}
 
-	sendCompressedContent(jsonData, "application/json", address)
+	doReq(jsonData, "application/json", "update", c)
 }
 
-func sendMetricsBatch(m []storage.Metrics, address string) {
+func sendMetricsBatch(m []storage.Metrics, c *config.Config) {
 	jsonData, err := json.Marshal(m)
 	if err != nil {
 		fmt.Println("Ошибка при маршалинге JSON:", err)
 
 	}
-	sendAllCompressedContent(jsonData, "application/json", address)
+	doReq(jsonData, "application/json", "updates", c)
 }

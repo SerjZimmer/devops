@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"github.com/jackc/pgx/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/mem"
 	"math/rand"
 	"os"
 	"runtime"
@@ -243,6 +245,27 @@ func (s *MetricsStorageInternal) WriteMetrics(m runtime.MemStats) {
 	if s.c.StoreInterval == 0 {
 		_ = s.writeToDisk()
 	}
+	collectNewMetrics(s)
+}
+
+func collectNewMetrics(metricsStorage *MetricsStorageInternal) {
+	memInfo, err := mem.VirtualMemory()
+	if err == nil {
+		metricsStorage.Mu.Lock()
+		metricsStorage.MetricsMap["TotalMemory"] = float64(memInfo.Total)
+		metricsStorage.MetricsMap["FreeMemory"] = float64(memInfo.Free)
+		metricsStorage.Mu.Unlock()
+	}
+
+	cpuInfo, err := cpu.Info()
+	if err == nil {
+		metricsStorage.Mu.Lock()
+		for i, cpuStat := range cpuInfo {
+			metricsStorage.MetricsMap[fmt.Sprintf("CPUUtilization%d", i)] = float64(cpuStat.CPU)
+		}
+		metricsStorage.Mu.Unlock()
+	}
+
 }
 func keyExists(key string) bool {
 	for _, k := range metricKeys {

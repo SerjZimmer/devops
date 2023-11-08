@@ -10,15 +10,15 @@ build-agent:
 
 
 run-server: build-server
-	./cmd/server/server -a="localhost:8080" -i=0 -d=$(DSN)
+	./cmd/server/server -a="localhost:8080" -i=0 -d=$(DSN) -k=testkey
 
 run-agent: build-agent
-	./cmd/agent/agent -a="localhost:8080" -r=10 -p=2
+	./cmd/agent/agent -a="localhost:8080" -r=10 -p=2 -k=testkey -l=2
 
 stattest:
 	go vet -vettool=statictest ./...
 
-autotests: build autotests13
+autotests: build autotests14
 
 autotests1:
 	metricstest -test.v -test.run=^TestIteration1$$ -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server
@@ -46,3 +46,5 @@ autotests12: autotests11
 	metricstest -test.v -test.run=^TestIteration12$$ -source-path=. -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port="8080" -database-dsn=$(DSN)
 autotests13: autotests12
 	metricstest -test.v -test.run=^TestIteration13$$ -source-path=. -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port="8080" -database-dsn=$(DSN)
+autotests14: autotests13
+	metricstest -test.v -test.run=^TestIteration14$$ -source-path=. -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port="8080" -database-dsn=$(DSN) -key="testkey"

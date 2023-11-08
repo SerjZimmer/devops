@@ -1,6 +1,8 @@
 package api
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/SerjZimmer/devops/internal/storage"
@@ -64,7 +66,18 @@ func NewHandler(stor metricsStorage) *Handler {
 		logger: logger,
 	}
 }
+func (s *Handler) HashSHA256Middleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		key := r.Header.Get("HashSHA256")
+		if key != "" {
+			data := r.URL.Path
+			responseHash := calculateHash(data)
+			w.Header().Set("HashSHA256", responseHash)
+		}
 
+		next.ServeHTTP(w, r)
+	})
+}
 func (s *Handler) LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		startTime := time.Now()
@@ -234,6 +247,12 @@ func (s *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Метрика успешно принята: %s/%s/%s\n", metricType, metricName, metricValue)
 
 }
+func calculateHash(data string) string {
+	hasher := sha256.New()
+	hasher.Write([]byte(data))
+	hash := hex.EncodeToString(hasher.Sum(nil))
+	return hash
+}
 
 func (s *Handler) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -260,7 +279,6 @@ func (s *Handler) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Ошибка при сериализации JSON", http.StatusInternalServerError)
 		return
 	}
-
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonResponse)
 
