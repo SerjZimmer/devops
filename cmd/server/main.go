@@ -10,6 +10,7 @@ import (
 	"github.com/SerjZimmer/devops/internal/storage"
 	"github.com/gorilla/mux"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
@@ -90,6 +91,7 @@ func mRouter(handler *api.Handler) {
 	r.HandleFunc("/value/", handler.GetMetricJSON).Methods("POST")
 
 	r.HandleFunc("/ping", handler.PingDB).Methods("GET")
+	r.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 
 	http.Handle("/", r)
 }
