@@ -1,19 +1,21 @@
 package api
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/SerjZimmer/devops/internal/storage"
-	_ "github.com/jackc/pgx/v4"
-	"go.uber.org/zap"
 	"html/template"
 	"net/http"
 	"net/http/httputil"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/SerjZimmer/devops/internal/storage"
+	_ "github.com/jackc/pgx/v4"
+	"go.uber.org/zap"
 )
 
 const metricsListTemplate = `
@@ -258,7 +260,16 @@ func (s *Handler) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var m storage.Metrics
-	decoder := json.NewDecoder(r.Body)
+	buf := bytes.NewBuffer(make([]byte, 0, 1028))
+
+	_, err := buf.ReadFrom(r.Body)
+	if err != nil {
+		http.Error(w, "Ошибка при разборе r.Body", http.StatusBadRequest)
+		return
+	}
+	r.Body.Close()
+
+	decoder := json.NewDecoder(buf)
 	if err := decoder.Decode(&m); err != nil {
 		http.Error(w, "Ошибка при разборе JSON", http.StatusBadRequest)
 		return
@@ -268,7 +279,7 @@ func (s *Handler) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Некорректные данные в JSON", http.StatusBadRequest)
 		return
 	}
-	err := s.stor.UpdateMetricValue(m)
+	err = s.stor.UpdateMetricValue(m)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

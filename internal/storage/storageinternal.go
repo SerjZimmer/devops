@@ -2,9 +2,10 @@ package storage
 
 import (
 	"errors"
+	"time"
+
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
-	"time"
 )
 
 type MetricsStorage struct {

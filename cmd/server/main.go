@@ -4,17 +4,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/SerjZimmer/devops/internal/api"
-	config "github.com/SerjZimmer/devops/internal/config/server"
-	"github.com/SerjZimmer/devops/internal/gzip"
-	"github.com/SerjZimmer/devops/internal/storage"
-	"github.com/gorilla/mux"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/SerjZimmer/devops/internal/api"
+	config "github.com/SerjZimmer/devops/internal/config/server"
+	"github.com/SerjZimmer/devops/internal/gzip"
+	"github.com/SerjZimmer/devops/internal/storage"
+	"github.com/gorilla/mux"
 )
 
 var (

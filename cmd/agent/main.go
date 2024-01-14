@@ -7,11 +7,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	config "github.com/SerjZimmer/devops/internal/config/agent"
-	"github.com/SerjZimmer/devops/internal/storage"
 	"net/http"
 	"runtime"
 	"time"
+
+	config "github.com/SerjZimmer/devops/internal/config/agent"
+	"github.com/SerjZimmer/devops/internal/storage"
 )
 
 func main() {

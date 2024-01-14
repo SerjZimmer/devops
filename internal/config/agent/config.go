@@ -2,9 +2,10 @@ package agent
 
 import (
 	"flag"
-	"github.com/SerjZimmer/devops/internal/storage"
 	"os"
 	"strconv"
+
+	"github.com/SerjZimmer/devops/internal/storage"
 )
 
 type Config struct {

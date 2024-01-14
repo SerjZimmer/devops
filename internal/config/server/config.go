@@ -2,8 +2,9 @@ package server
 
 import (
 	"flag"
-	"github.com/SerjZimmer/devops/internal/storage"
 	"os"
+
+	"github.com/SerjZimmer/devops/internal/storage"
 )
 
 type Config struct {

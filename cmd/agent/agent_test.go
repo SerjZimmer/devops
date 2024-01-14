@@ -1,11 +1,12 @@
 package main
 
 import (
-	config "github.com/SerjZimmer/devops/internal/config/agent"
-	"github.com/SerjZimmer/devops/internal/storage"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	config "github.com/SerjZimmer/devops/internal/config/agent"
+	"github.com/SerjZimmer/devops/internal/storage"
 )
 
 // Mock sendMetric function for testing

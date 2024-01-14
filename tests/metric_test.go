@@ -2,13 +2,14 @@ package tests
 
 import (
 	"errors"
-	"github.com/SerjZimmer/devops/internal/api"
-	"github.com/SerjZimmer/devops/internal/storage"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/SerjZimmer/devops/internal/api"
+	"github.com/SerjZimmer/devops/internal/storage"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestUpdateMetricJson(t *testing.T) {
