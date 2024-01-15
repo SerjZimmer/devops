@@ -92,6 +92,7 @@ func TestWriteToDisk(t *testing.T) {
 	}
 }
 
+// t
 func TestMetricsStorageInternal_ReadFromDisk(t *testing.T) {
 	// Подготовка временного файла с данными
 	tempFile, err := os.CreateTemp("", "testfile.json")
