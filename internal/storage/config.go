@@ -6,6 +6,7 @@ import (
 	"strconv"
 )
 
+// Config представляет собой структуру конфигурации для хранилища метрик.
 type Config struct {
 	RestoreFlag     bool
 	MaxConnections  int
@@ -14,6 +15,7 @@ type Config struct {
 	FileStoragePath string
 }
 
+// NewConfig создает новый экземпляр конфигурации хранилища метрик.
 func NewConfig(needStoreInterval bool) *Config {
 
 	config := &Config{
@@ -33,6 +35,8 @@ func NewConfig(needStoreInterval bool) *Config {
 	flag.IntVar(&config.StoreInterval, "i", getEnvAsInt("STORE_INTERVAL", 300), "Interval in seconds for storing server metrics on disk")
 	return config
 }
+
+// getEnv возвращает значение переменной окружения или значение по умолчанию, если переменная не установлена.
 func getEnv(key, defaultValue string) string {
 	value, exists := os.LookupEnv(key)
 	if exists {
@@ -41,6 +45,7 @@ func getEnv(key, defaultValue string) string {
 	return defaultValue
 }
 
+// getEnvAsInt возвращает значение переменной окружения в виде целого числа или значение по умолчанию, если переменная не установлена или не является числом.
 func getEnvAsInt(key string, defaultValue int) int {
 	valueStr := getEnv(key, "")
 	if valueStr != "" {
@@ -51,6 +56,8 @@ func getEnvAsInt(key string, defaultValue int) int {
 	}
 	return defaultValue
 }
+
+// getEnvAsBool возвращает значение переменной окружения в виде булевого значения или значение по умолчанию, если переменная не установлена или не является булевым значением.
 func getEnvAsBool(key string, defaultValue bool) bool {
 	valueStr := getEnv(key, "")
 	if valueStr != "" {

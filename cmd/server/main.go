@@ -23,6 +23,7 @@ var (
 	shutdownChan = make(chan struct{})
 )
 
+// main является функцией точки входа в приложение сервера.
 func main() {
 
 	c := config.New()
@@ -56,6 +57,7 @@ func main() {
 	os.Exit(0)
 }
 
+// run запускает HTTP-сервер и обрабатывает сигналы завершения.
 func run(c *config.Config) error {
 	fmt.Printf("Сервер запущен на %v\n", c.Address)
 
@@ -78,6 +80,7 @@ func run(c *config.Config) error {
 	return nil
 }
 
+// mRouter настраивает маршрутизатор для обработчика API.
 func mRouter(handler *api.Handler) {
 	r := mux.NewRouter()
 

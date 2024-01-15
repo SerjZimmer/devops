@@ -15,6 +15,9 @@ import (
 	"github.com/SerjZimmer/devops/internal/storage"
 )
 
+// main является функцией точки входа в приложение.
+// Здесь инициализируются конфигурация, хранилище метрик,
+// а также запускаются горутины для периодического сбора и отправки данных.
 func main() {
 
 	c := config.New()
@@ -34,12 +37,14 @@ func main() {
 
 }
 
+// poll собирает текущие метрики использования памяти и записывает их в хранилище.
 func poll(s *storage.MetricsStorage) {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 	s.WriteMetrics(m)
 }
 
+// send отправляет каждую метрику из хранилища на сервер.
 func send(s *storage.MetricsStorage, c *config.Config) {
 
 	s.Mu.Lock()
@@ -66,6 +71,7 @@ func send(s *storage.MetricsStorage, c *config.Config) {
 	s.Mu.Unlock()
 }
 
+// sendAllInBatches отправляет метрики на сервер пакетами заданного размера.
 func sendAllInBatches(s *storage.MetricsStorage, c *config.Config, batchSize int) {
 	s.Mu.Lock()
 	var metrics []storage.Metrics
@@ -104,6 +110,7 @@ func sendAllInBatches(s *storage.MetricsStorage, c *config.Config, batchSize int
 	s.Mu.Unlock()
 }
 
+// doReq выполняет HTTP-запрос на сервер с сжатием данных.
 func doReq(data []byte, contentType, path string, c *config.Config) {
 	compressedData, err := compressData(data)
 	if err != nil {
@@ -142,6 +149,7 @@ func doReq(data []byte, contentType, path string, c *config.Config) {
 	}
 }
 
+// compressData сжимает данные с использованием Gzip.
 func compressData(data []byte) (bytes.Buffer, error) {
 	// Create a buffer to store compressed data
 	var compressedData bytes.Buffer
@@ -161,6 +169,8 @@ func compressData(data []byte) (bytes.Buffer, error) {
 
 	return compressedData, nil
 }
+
+// createHTTPRequest создает HTTP-запрос с сжатыми данными.
 func createHTTPRequest(serverURL, contentType, key string, compressedData *bytes.Buffer) (*http.Request, error) {
 	req, err := http.NewRequest("POST", serverURL, compressedData)
 	if err != nil {
@@ -179,6 +189,7 @@ func createHTTPRequest(serverURL, contentType, key string, compressedData *bytes
 	return req, nil
 }
 
+// sendMetric отправляет отдельную метрику на сервер.
 func sendMetric(m storage.Metrics, c *config.Config) {
 	jsonData, err := json.Marshal(m)
 	if err != nil {
@@ -189,6 +200,7 @@ func sendMetric(m storage.Metrics, c *config.Config) {
 	doReq(jsonData, "application/json", "update", c)
 }
 
+// sendMetricsBatch отправляет пакет метрик на сервер.
 func sendMetricsBatch(m []storage.Metrics, c *config.Config) {
 	jsonData, err := json.Marshal(m)
 	if err != nil {

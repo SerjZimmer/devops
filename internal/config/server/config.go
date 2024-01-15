@@ -7,6 +7,7 @@ import (
 	"github.com/SerjZimmer/devops/internal/storage"
 )
 
+// Config представляет структуру конфигурации для приложения.
 type Config struct {
 	Address  string
 	LogLevel string
@@ -14,6 +15,7 @@ type Config struct {
 	Key      string
 }
 
+// New создает новый экземпляр конфигурации с значениями по умолчанию или из переменных окружения и флагов командной строки.
 func New() *Config {
 	StorageConfig := storage.NewConfig(true)
 	config := &Config{
@@ -29,6 +31,8 @@ func New() *Config {
 	flag.Parse()
 	return config
 }
+
+// getEnv возвращает значение переменной окружения или значение по умолчанию, если переменная не установлена.
 func getEnv(key, defaultValue string) string {
 	value, exists := os.LookupEnv(key)
 	if exists {

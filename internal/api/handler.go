@@ -2,14 +2,10 @@ package api
 
 import (
 	"bytes"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"net/http"
 	"net/http/httputil"
-	"strconv"
 	"strings"
 	"time"
 
@@ -18,24 +14,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const metricsListTemplate = `
-<html>
-<head>
-    <title>Metrics</title>
-</head>
-<body>
-    <h1>Все метрики</h1>
-    <ul>
-        {{range .Metrics}}
-        <li>{{.}}</li>
-        {{end}}
-    </ul>
-</body>
-</html>
-`
-
-var tmpl = template.Must(template.New("metricsList").Parse(metricsListTemplate))
-
+// metricsStorage представляет интерфейс для взаимодействия с хранилищем метрик.
 type metricsStorage interface {
 	GetMetricByName(m storage.Metrics) (float64, error)
 	UpdateMetricValue(m storage.Metrics) error
@@ -45,29 +24,7 @@ type metricsStorage interface {
 	PingDB() error
 }
 
-type Handler struct {
-	stor   metricsStorage
-	logger *zap.Logger
-}
-
-type responseWriterWithStatus struct {
-	http.ResponseWriter
-	status int
-}
-
-func NewHandler(stor metricsStorage) *Handler {
-	config := zap.NewProductionConfig()
-	config.Level = zap.NewAtomicLevelAt(zap.InfoLevel)
-
-	logger, err := config.Build()
-	if err != nil {
-		panic(fmt.Sprintf("failed to create logger: %v", err))
-	}
-	return &Handler{
-		stor:   stor,
-		logger: logger,
-	}
-}
+// HashSHA256Middleware представляет middleware для проверки хеша SHA256.
 func (s *Handler) HashSHA256Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		key := r.Header.Get("HashSHA256")
@@ -80,6 +37,8 @@ func (s *Handler) HashSHA256Middleware(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
+// LoggingMiddleware представляет middleware для логирования HTTP-запросов и ответов.
 func (s *Handler) LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		startTime := time.Now()
@@ -101,6 +60,8 @@ func (s *Handler) LoggingMiddleware(next http.Handler) http.Handler {
 		)
 	})
 }
+
+// PingDB обрабатывает HTTP GET-запрос для проверки доступности базы данных.
 func (s *Handler) PingDB(w http.ResponseWriter, r *http.Request) {
 	if err := s.stor.PingDB(); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -108,6 +69,7 @@ func (s *Handler) PingDB(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// GetMetricsList обрабатывает HTTP GET-запрос для получения списка всех метрик в виде HTML.
 func (s *Handler) GetMetricsList(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
@@ -128,6 +90,7 @@ func (s *Handler) GetMetricsList(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GetMetric обрабатывает HTTP GET-запрос для получения значения конкретной метрики в формате JSON.
 func (s *Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if r.Method != http.MethodGet {
@@ -165,6 +128,7 @@ func (s *Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GetMetricJSON обрабатывает HTTP POST-запрос для получения значения метрики из тела запроса в формате JSON.
 func (s *Handler) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	var m storage.Metrics
@@ -208,6 +172,7 @@ func (s *Handler) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// UpdateMetric обрабатывает HTTP POST-запрос для обновления значения конкретной метрики.
 func (s *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -249,13 +214,8 @@ func (s *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Метрика успешно принята: %s/%s/%s\n", metricType, metricName, metricValue)
 
 }
-func calculateHash(data string) string {
-	hasher := sha256.New()
-	hasher.Write([]byte(data))
-	hash := hex.EncodeToString(hasher.Sum(nil))
-	return hash
-}
 
+// UpdateMetricJSON обрабатывает HTTP POST-запрос для обновления значения метрики из тела запроса в формате JSON.
 func (s *Handler) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -295,6 +255,7 @@ func (s *Handler) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// UpdateMetricsJSON обрабатывает HTTP POST-запрос для обновления значений множества метрик из тела запроса в формате JSON.
 func (s *Handler) UpdateMetricsJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -319,32 +280,4 @@ func (s *Handler) UpdateMetricsJSON(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonResponse)
 
-}
-
-func isValidMetrics(m storage.Metrics) bool {
-	if m.ID == "" {
-		return false
-	}
-
-	if m.MType != "gauge" && m.MType != "counter" {
-		return false
-	}
-
-	if m.MType == "gauge" && m.Value == nil {
-		return false
-	}
-
-	if m.MType == "counter" && m.Delta == nil && m.ID != "PollCount" {
-		return false
-	}
-
-	return true
-}
-
-func parseNumeric(mValue string) (float64, error) {
-	floatVal, err := strconv.ParseFloat(mValue, 64)
-	if err != nil {
-		return 0, err
-	}
-	return floatVal, nil
 }
