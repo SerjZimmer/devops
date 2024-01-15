@@ -2,21 +2,25 @@ package storage
 
 import (
 	"errors"
+	"time"
+
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
-	"time"
 )
 
+// MetricsStorage представляет собой структуру, обертывающую внутреннюю структуру MetricsStorageInternal.
 type MetricsStorage struct {
 	*MetricsStorageInternal
 }
 
+// UpdateMetricValue обновляет значение метрики с использованием механизма повторных попыток.
 func (s *MetricsStorage) UpdateMetricValue(m Metrics) error {
 	return Retry(func() error {
 		return s.MetricsStorageInternal.UpdateMetricValue(m)
 	})
 }
 
+// Retry выполняет функцию fn с повторными попытками в случае ошибок, связанных с подключением к базе данных.
 func Retry(fn func() error) error {
 	err := fn()
 	var pgErr *pgconn.PgError

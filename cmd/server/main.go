@@ -4,16 +4,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	_ "net/http/pprof"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
 	"github.com/SerjZimmer/devops/internal/api"
 	config "github.com/SerjZimmer/devops/internal/config/server"
 	"github.com/SerjZimmer/devops/internal/gzip"
 	"github.com/SerjZimmer/devops/internal/storage"
 	"github.com/gorilla/mux"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 )
 
 var (
@@ -21,6 +23,7 @@ var (
 	shutdownChan = make(chan struct{})
 )
 
+// main является функцией точки входа в приложение сервера.
 func main() {
 
 	c := config.New()
@@ -54,6 +57,7 @@ func main() {
 	os.Exit(0)
 }
 
+// run запускает HTTP-сервер и обрабатывает сигналы завершения.
 func run(c *config.Config) error {
 	fmt.Printf("Сервер запущен на %v\n", c.Address)
 
@@ -76,6 +80,7 @@ func run(c *config.Config) error {
 	return nil
 }
 
+// mRouter настраивает маршрутизатор для обработчика API.
 func mRouter(handler *api.Handler) {
 	r := mux.NewRouter()
 
@@ -90,6 +95,7 @@ func mRouter(handler *api.Handler) {
 	r.HandleFunc("/value/", handler.GetMetricJSON).Methods("POST")
 
 	r.HandleFunc("/ping", handler.PingDB).Methods("GET")
+	r.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 
 	http.Handle("/", r)
 }
