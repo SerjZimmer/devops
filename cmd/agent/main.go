@@ -170,25 +170,6 @@ func compressData(data []byte) (bytes.Buffer, error) {
 	return compressedData, nil
 }
 
-// createHTTPRequest создает HTTP-запрос с сжатыми данными.
-func createHTTPRequest(serverURL, contentType, key string, compressedData *bytes.Buffer) (*http.Request, error) {
-	req, err := http.NewRequest("POST", serverURL, compressedData)
-	if err != nil {
-		return nil, fmt.Errorf("ошибка при создании запроса: %v", err)
-	}
-
-	req.Header.Set("Content-Type", contentType)
-	req.Header.Set("Content-Encoding", "gzip")
-	if key != "" {
-		hasher := sha256.New()
-		hasher.Write([]byte(key))
-		hash := hex.EncodeToString(hasher.Sum(nil))
-		req.Header.Set("HashSHA256", hash)
-	}
-
-	return req, nil
-}
-
 // sendMetric отправляет отдельную метрику на сервер.
 func sendMetric(m storage.Metrics, c *config.Config) {
 	jsonData, err := json.Marshal(m)

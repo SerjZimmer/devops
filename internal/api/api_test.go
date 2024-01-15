@@ -1,12 +1,74 @@
 package api
 
 import (
+	"github.com/SerjZimmer/devops/internal/storage"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+func TestIsValidMetrics(t *testing.T) {
+	// Тест случая, когда метрика является корректной гаугой
+	validGauge := storage.Metrics{
+		ID:    "ValidGauge",
+		MType: "gauge",
+		Value: float64Ptr(10.0),
+	}
+	assert.True(t, isValidMetrics(validGauge), "Expected isValidMetrics to return true for valid gauge metric, but got false")
+
+	// Тест случая, когда метрика является корректным счетчиком
+	validCounter := storage.Metrics{
+		ID:    "ValidCounter",
+		MType: "counter",
+		Delta: int64Ptr(1),
+	}
+	assert.True(t, isValidMetrics(validCounter), "Expected isValidMetrics to return true for valid counter metric, but got false")
+
+	// Тест случая, когда метрика является счетчиком "PollCount"
+	pollCount := storage.Metrics{
+		ID:    "PollCount",
+		MType: "counter",
+		Delta: int64Ptr(1),
+	}
+	assert.True(t, isValidMetrics(pollCount), "Expected isValidMetrics to return true for PollCount metric, but got false")
+
+	// Тест случая, когда ID метрики отсутствует
+	invalidID := storage.Metrics{
+		ID:    "",
+		MType: "gauge",
+		Value: float64Ptr(10.0),
+	}
+	assert.False(t, isValidMetrics(invalidID), "Expected isValidMetrics to return false for metric with empty ID, but got true")
+
+	// Тест случая, когда MType не равно "gauge" или "counter"
+	invalidMType := storage.Metrics{
+		ID:    "InvalidMType",
+		MType: "invalidType",
+		Value: float64Ptr(10.0),
+	}
+	assert.False(t, isValidMetrics(invalidMType), "Expected isValidMetrics to return false for metric with invalid MType, but got true")
+
+	// Тест случая, когда MType равно "gauge", но значение Value отсутствует
+	missingValue := storage.Metrics{
+		ID:    "MissingValue",
+		MType: "gauge",
+		Value: nil,
+	}
+	assert.False(t, isValidMetrics(missingValue), "Expected isValidMetrics to return false for gauge metric with missing Value, but got true")
+}
+
+func int64Ptr(value int) *int64 {
+	v := int64(value)
+	return &v
+}
+
+// Вспомогательная функция для создания указателя на float64
+func float64Ptr(value float64) *float64 {
+	return &value
+}
 func Test_parseNumeric(t *testing.T) {
 	tests := []struct {
 		input       string
@@ -48,4 +110,34 @@ func Test_calculateHash(t *testing.T) {
 			require.Equal(t, tc.expected, result, "Expected value %f for input %s", tc.expected, result)
 		})
 	}
+}
+
+func TestHashSHA256Middleware(t *testing.T) {
+	// Создаем хендлер, который будет вызван middleware.
+	mockHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	// Создаем middleware с моком хендлера.
+	handler := &Handler{}
+	middleware := handler.HashSHA256Middleware(mockHandler)
+
+	// Создаем фейковый запрос.
+	req, err := http.NewRequest("GET", "/example", nil)
+	assert.NoError(t, err)
+
+	// Фейковый ключ для хеша SHA256.
+	fakeKey := "fake_key"
+
+	// Добавляем фейковый ключ в заголовок.
+	req.Header.Set("HashSHA256", fakeKey)
+
+	// Создаем фейковый ответ.
+	w := httptest.NewRecorder()
+
+	// Вызываем middleware.
+	middleware.ServeHTTP(w, req)
+
+	// Проверяем, что хеш SHA256 был установлен в заголовке ответа.
+	assert.Equal(t, w.Header().Get("HashSHA256"), calculateHash("/example"))
 }
