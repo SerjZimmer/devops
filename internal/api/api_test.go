@@ -1,10 +1,11 @@
 package api
 
 import (
-	"github.com/SerjZimmer/devops/internal/storage"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/SerjZimmer/devops/internal/storage"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

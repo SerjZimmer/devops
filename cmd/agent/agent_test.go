@@ -5,10 +5,11 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	config "github.com/SerjZimmer/devops/internal/config/agent"
 	"github.com/SerjZimmer/devops/internal/storage"

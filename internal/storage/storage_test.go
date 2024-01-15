@@ -2,11 +2,11 @@ package storage
 
 import (
 	"encoding/json"
-	"github.com/stretchr/testify/assert"
-	"io/ioutil"
 	"os"
 	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestKeyExists(t *testing.T) {
@@ -40,7 +40,7 @@ func (fs DefaultFileSystem) WriteFile(filename string, data []byte, perm os.File
 // Тест для функции writeToDisk
 func TestWriteToDisk(t *testing.T) {
 	// Создаем временный файл
-	tempFile, err := ioutil.TempFile("", "testfile")
+	tempFile, err := os.CreateTemp("", "testfile")
 	if err != nil {
 		t.Fatalf("Could not create temp file: %v", err)
 	}
@@ -65,7 +65,7 @@ func TestWriteToDisk(t *testing.T) {
 	}
 
 	// Читаем данные из файла
-	content, err := ioutil.ReadFile(tempFile.Name())
+	content, err := os.ReadFile(tempFile.Name())
 	if err != nil {
 		t.Fatalf("Could not read from temp file: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestWriteToDisk(t *testing.T) {
 
 func TestMetricsStorageInternal_ReadFromDisk(t *testing.T) {
 	// Подготовка временного файла с данными
-	tempFile, err := ioutil.TempFile("", "testfile.json")
+	tempFile, err := os.CreateTemp("", "testfile.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +109,7 @@ func TestMetricsStorageInternal_ReadFromDisk(t *testing.T) {
 	}
 
 	// Запись данных во временный файл
-	if err := ioutil.WriteFile(tempFile.Name(), testMetricsBytes, 0644); err != nil {
+	if err := os.WriteFile(tempFile.Name(), testMetricsBytes, 0644); err != nil {
 		t.Fatal(err)
 	}
 
