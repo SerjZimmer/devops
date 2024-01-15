@@ -4,11 +4,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"github.com/SerjZimmer/devops/internal/storage"
-	"go.uber.org/zap"
 	"html/template"
 	"net/http"
 	"strconv"
+
+	"github.com/SerjZimmer/devops/internal/storage"
+	"go.uber.org/zap"
 )
 
 // metricsListTemplate - HTML-шаблон для представления списка метрик.
