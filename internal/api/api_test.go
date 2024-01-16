@@ -147,6 +147,14 @@ func TestHashSHA256Middleware(t *testing.T) {
 	// Проверяем, что хеш SHA256 был установлен в заголовке ответа.
 	assert.Equal(t, w.Header().Get("HashSHA256"), calculateHash("/example"))
 }
+
+type LoggerKey int
+
+const (
+	// LoggerKeyInstance - константа для ключа контекста
+	LoggerKeyInstance LoggerKey = iota
+)
+
 func TestLoggingMiddleware(t *testing.T) {
 	// Создаем буфер для записи логов
 	buffer := &bytes.Buffer{}
@@ -166,7 +174,7 @@ func TestLoggingMiddleware(t *testing.T) {
 	})
 
 	// Создаем контекст с экземпляром логгера и передаем его в middleware
-	ctx := context.WithValue(context.Background(), "logger", logger)
+	ctx := context.WithValue(context.Background(), LoggerKeyInstance, logger)
 	middlewareHandler := handler.LoggingMiddleware(handlerFunc).ServeHTTP
 
 	// Создаем фейковый запрос
