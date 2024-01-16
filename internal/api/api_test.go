@@ -100,6 +100,7 @@ func Test_parseNumeric(t *testing.T) {
 	}
 }
 
+// t
 func Test_calculateHash(t *testing.T) {
 	testCases := []struct {
 		input    string
