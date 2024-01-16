@@ -1,6 +1,10 @@
 package api
 
 import (
+	"bytes"
+	"context"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -141,4 +145,122 @@ func TestHashSHA256Middleware(t *testing.T) {
 
 	// Проверяем, что хеш SHA256 был установлен в заголовке ответа.
 	assert.Equal(t, w.Header().Get("HashSHA256"), calculateHash("/example"))
+}
+func TestLoggingMiddleware(t *testing.T) {
+	// Создаем буфер для записи логов
+	buffer := &bytes.Buffer{}
+	logger := zap.New(zapcore.NewCore(
+		zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
+		zapcore.AddSync(buffer),
+		zapcore.DebugLevel,
+	))
+
+	// Создаем экземпляр Handler с фейковым логгером
+	handler := &Handler{logger: logger}
+
+	// Создаем фейковый сервер с применением LoggingMiddleware
+	handlerFunc := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte("Hello, World!"))
+	})
+
+	// Создаем контекст с экземпляром логгера и передаем его в middleware
+	ctx := context.WithValue(context.Background(), "logger", logger)
+	middlewareHandler := handler.LoggingMiddleware(handlerFunc).ServeHTTP
+
+	// Создаем фейковый запрос
+	req, err := http.NewRequest("GET", "/example", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Создаем фейковый ответ
+	recorder := httptest.NewRecorder()
+
+	// Вызываем LoggingMiddleware с нашим фейковым запросом и ответом, передавая контекст
+	middlewareHandler(recorder, req.WithContext(ctx))
+
+	// Прочитаем содержимое буфера и проверим ожидаемые строки логов
+	logOutput := buffer.String()
+	assert.Contains(t, logOutput, "GET /example HTTP/1.1")
+	assert.Contains(t, logOutput, "Request processed")
+}
+
+func TestGetMetric(t *testing.T) {
+	// Создаем экземпляр Handler с фейковым логгером и другими необходимыми зависимостями
+	handler := &Handler{}
+
+	// Тест 2: Ошибка при использовании недопустимого метода
+	t.Run("Method Not Allowed", func(t *testing.T) {
+		req, err := http.NewRequest("POST", "/value/gauge/metric1", nil)
+		assert.NoError(t, err)
+
+		recorder := httptest.NewRecorder()
+
+		handler.GetMetric(recorder, req)
+
+		assert.Equal(t, http.StatusMethodNotAllowed, recorder.Code)
+		// Добавьте дополнительные проверки для ошибки "Метод не разрешен"
+	})
+
+	// Тест 3: Ошибка при использовании неверного формата URL
+	t.Run("Bad Request - Invalid URL Format", func(t *testing.T) {
+		req, err := http.NewRequest("GET", "/invalid/url/format", nil)
+		assert.NoError(t, err)
+
+		recorder := httptest.NewRecorder()
+
+		handler.GetMetric(recorder, req)
+
+		assert.Equal(t, http.StatusNotFound, recorder.Code)
+		// Добавьте дополнительные проверки для ошибки "Неверный формат URL"
+	})
+
+	// Тест 4: Ошибка при запросе несуществующего типа метрики
+	t.Run("Not Found - Invalid Metric Type", func(t *testing.T) {
+		req, err := http.NewRequest("GET", "/value/invalidtype/metric1", nil)
+		assert.NoError(t, err)
+
+		recorder := httptest.NewRecorder()
+
+		handler.GetMetric(recorder, req)
+
+		assert.Equal(t, http.StatusNotFound, recorder.Code)
+		// Добавьте дополнительные проверки для ошибки "Неверный тип метрики"
+	})
+}
+
+func TestGetMetricJSON(t *testing.T) {
+	// Создаем экземпляр Handler с фейковым логгером и другими необходимыми зависимостями
+	handler := &Handler{}
+
+	// Тест 2: Ошибка при разборе некорректного JSON
+	t.Run("Bad Request - Incorrect JSON", func(t *testing.T) {
+		// Подготавливаем некорректные JSON-данные для запроса
+		jsonData := `{"InvalidField": "invalidValue"}`
+		req, err := http.NewRequest("POST", "/value/", bytes.NewBufferString(jsonData))
+		assert.NoError(t, err)
+
+		recorder := httptest.NewRecorder()
+
+		handler.GetMetricJSON(recorder, req)
+
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+		// Добавьте дополнительные проверки для ошибки "Ошибка при разборе JSON"
+	})
+
+	// Тест 3: Ошибка при использовании неверного типа метрики
+	t.Run("Bad Request - Invalid Metric Type", func(t *testing.T) {
+		// Подготавливаем JSON-данные с неверным типом метрики для запроса
+		jsonData := `{"MType": "invalidType", "ID": "metric1", "Delta": 10.5, "Value": null}`
+		req, err := http.NewRequest("POST", "/value/", bytes.NewBufferString(jsonData))
+		assert.NoError(t, err)
+
+		recorder := httptest.NewRecorder()
+
+		handler.GetMetricJSON(recorder, req)
+
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+		// Добавьте дополнительные проверки для ошибки "Неверный тип метрики"
+	})
 }
