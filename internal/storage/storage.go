@@ -6,18 +6,20 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jackc/pgx/v5"
-	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/shirou/gopsutil/cpu"
-	"github.com/shirou/gopsutil/mem"
 	"math/rand"
 	"os"
 	"runtime"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/jackc/pgx/v5"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/mem"
 )
 
+// metricKeys содержит названия метрик, которые будут сохраняться в базе данных.
 var metricKeys = []string{
 	"Alloc",
 	"BuckHashSys",
@@ -50,6 +52,7 @@ var metricKeys = []string{
 	"RandomValue",
 }
 
+// createDB создает и настраивает базу данных для хранения метрик.
 func createDB(DBConn string) {
 
 	// Установка соединения с базой данных
@@ -112,6 +115,7 @@ func createDB(DBConn string) {
 
 }
 
+// MetricsStorageInternal представляет внутреннюю структуру для хранения и обработки метрик.
 type MetricsStorageInternal struct {
 	Mu         sync.RWMutex
 	MetricsMap map[string]float64
@@ -119,6 +123,7 @@ type MetricsStorageInternal struct {
 	DB         *sql.DB
 }
 
+// TestMetricStorage создает тестовый экземпляр MetricsStorage.
 func TestMetricStorage() *MetricsStorage {
 	m := &MetricsStorageInternal{
 		MetricsMap: make(map[string]float64),
@@ -127,6 +132,7 @@ func TestMetricStorage() *MetricsStorage {
 	return &MetricsStorage{m}
 }
 
+// PingDB проверяет подключение к базе данных.
 func (s *MetricsStorage) PingDB() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -136,6 +142,7 @@ func (s *MetricsStorage) PingDB() error {
 	return nil
 }
 
+// NewMetricsStorage создает новый экземпляр MetricsStorage с учетом конфигурации.
 func NewMetricsStorage(c *Config) *MetricsStorage {
 
 	m := &MetricsStorageInternal{}
@@ -170,6 +177,7 @@ func NewMetricsStorage(c *Config) *MetricsStorage {
 	return &MetricsStorage{m}
 }
 
+// ReadFromDisk считывает данные о метриках с диска.
 func (s *MetricsStorageInternal) ReadFromDisk() error {
 	bytes, err := os.ReadFile(s.c.FileStoragePath)
 	if err != nil {
@@ -182,10 +190,12 @@ func (s *MetricsStorageInternal) ReadFromDisk() error {
 	return nil
 }
 
+// Shutdown сохраняет данные о метриках при завершении работы.
 func (s *MetricsStorageInternal) Shutdown() {
 	_ = s.writeToDisk()
 }
 
+// writeToDisk сохраняет данные о метриках на диск.
 func (s *MetricsStorageInternal) writeToDisk() error {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
@@ -203,6 +213,7 @@ func (s *MetricsStorageInternal) writeToDisk() error {
 	return os.WriteFile(s.c.FileStoragePath, bytes, 0644)
 }
 
+// Metrics представляет собой структуру данных для хранения информации о метрике.
 type Metrics struct {
 	ID    string   `json:"id"`              // имя метрики
 	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
@@ -210,6 +221,7 @@ type Metrics struct {
 	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
 }
 
+// WriteMetrics записывает данные о метриках в хранилище.
 func (s *MetricsStorageInternal) WriteMetrics(m runtime.MemStats) {
 	s.Mu.Lock()
 	s.MetricsMap["Alloc"] = float64(m.Alloc)
@@ -248,6 +260,7 @@ func (s *MetricsStorageInternal) WriteMetrics(m runtime.MemStats) {
 	collectNewMetrics(s)
 }
 
+// collectNewMetrics собирает новые метрики, такие как использование памяти и CPU.
 func collectNewMetrics(metricsStorage *MetricsStorageInternal) {
 	memInfo, err := mem.VirtualMemory()
 	if err == nil {
@@ -267,6 +280,8 @@ func collectNewMetrics(metricsStorage *MetricsStorageInternal) {
 	}
 
 }
+
+// keyExists проверяет наличие ключей.
 func keyExists(key string) bool {
 	for _, k := range metricKeys {
 		if k == key {
@@ -277,6 +292,7 @@ func keyExists(key string) bool {
 	return false
 }
 
+// UpdateMetricValue обновляет значение метрики в хранилище.
 func (s *MetricsStorageInternal) UpdateMetricValue(m Metrics) error {
 
 	s.Mu.Lock()
@@ -348,6 +364,7 @@ func (s *MetricsStorageInternal) UpdateMetricValue(m Metrics) error {
 	return nil
 }
 
+// UpdateMetricsValue обновляет значения нескольких метрик в хранилище.
 func (s *MetricsStorageInternal) UpdateMetricsValue(metrics []Metrics) error {
 	var err error
 	for _, m := range metrics {
@@ -356,6 +373,7 @@ func (s *MetricsStorageInternal) UpdateMetricsValue(metrics []Metrics) error {
 	return err
 }
 
+// GetMetricByName получает значение метрики по её имени.
 func (s *MetricsStorageInternal) GetMetricByName(m Metrics) (float64, error) {
 	s.Mu.RLock()
 	value, exists := s.MetricsMap[m.ID]
@@ -366,6 +384,7 @@ func (s *MetricsStorageInternal) GetMetricByName(m Metrics) (float64, error) {
 	return 0, fmt.Errorf("undefind metricName: %v", m.ID)
 }
 
+// SortMetricByName сортирует названия метрик по алфавиту.
 func (s *MetricsStorageInternal) SortMetricByName() []string {
 	var keys []string
 	s.Mu.RLock()
@@ -377,6 +396,7 @@ func (s *MetricsStorageInternal) SortMetricByName() []string {
 	return keys
 }
 
+// GetAllMetrics возвращает все метрики в виде строки.
 func (s *MetricsStorageInternal) GetAllMetrics() string {
 	keys := s.SortMetricByName()
 	var result string

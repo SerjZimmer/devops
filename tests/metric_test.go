@@ -1,14 +1,17 @@
 package tests
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
-	"github.com/SerjZimmer/devops/internal/api"
-	"github.com/SerjZimmer/devops/internal/storage"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/SerjZimmer/devops/internal/api"
+	"github.com/SerjZimmer/devops/internal/storage"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestUpdateMetricJson(t *testing.T) {
@@ -154,4 +157,137 @@ func Test_GetMetric(t *testing.T) {
 
 		})
 	}
+}
+
+func TestGetMetricJSON(t *testing.T) {
+	handler := api.NewHandler(storage.TestMetricStorage())
+
+	testCases := []struct {
+		Name           string
+		RequestBody    string
+		ExpectedStatus int
+		ExpectedBody   string
+	}{
+		{
+			Name:           "Invalid Metric Type",
+			RequestBody:    `{"type": "invalid", "id": "metricName"}`,
+			ExpectedStatus: http.StatusBadRequest,
+			ExpectedBody:   "Неверный тип метрики\n",
+		},
+		{
+			Name:           "Metric Not Found",
+			RequestBody:    `{"type": "gauge", "id": "unknown_metric"}`,
+			ExpectedStatus: http.StatusNotFound,
+			ExpectedBody:   "Неверное  имя метрики\n",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.Name, func(t *testing.T) {
+			req, err := http.NewRequest("POST", "/get/", strings.NewReader(tc.RequestBody))
+			assert.NoError(t, err)
+			req.Header.Set("Content-Type", "application/json")
+
+			w := httptest.NewRecorder()
+
+			handler.GetMetricJSON(w, req)
+
+			assert.Equal(t, tc.ExpectedStatus, w.Code)
+			assert.Equal(t, tc.ExpectedBody, w.Body.String())
+		})
+	}
+}
+
+func TestUpdateMetric(t *testing.T) {
+	handler := api.NewHandler(storage.TestMetricStorage())
+
+	testCases := []struct {
+		Name           string
+		URL            string
+		ExpectedStatus int
+		ExpectedBody   string
+	}{
+		{
+			Name:           "Valid Request",
+			URL:            "/metric/gauge/metricName/123.45",
+			ExpectedStatus: http.StatusOK,
+			ExpectedBody:   "Метрика успешно принята: gauge/metricName/123.45\n",
+		},
+
+		{
+			Name:           "Invalid URL Format",
+			URL:            "/metric/gauge/metricName",
+			ExpectedStatus: http.StatusBadRequest,
+			ExpectedBody:   "Неверный формат URL\n",
+		},
+		{
+			Name:           "Invalid Metric Type",
+			URL:            "/metric/invalid/metricName/123.45",
+			ExpectedStatus: http.StatusBadRequest,
+			ExpectedBody:   "Неверный тип метрики\n",
+		},
+		{
+			Name:           "Invalid Metric Value",
+			URL:            "/metric/gauge/metricName/invalid_value",
+			ExpectedStatus: http.StatusBadRequest,
+			ExpectedBody:   "Значение метрики должно быть числом\n",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.Name, func(t *testing.T) {
+			req, err := http.NewRequest("GET", tc.URL, nil)
+			assert.NoError(t, err)
+
+			rr := httptest.NewRecorder()
+
+			handler.UpdateMetric(rr, req)
+
+			assert.Equal(t, tc.ExpectedStatus, rr.Code)
+			assert.Equal(t, tc.ExpectedBody, rr.Body.String())
+		})
+	}
+}
+
+func TestUpdateMetricsJSON(t *testing.T) {
+	handler := api.NewHandler(storage.TestMetricStorage())
+
+	// Подготовка тестовых данных
+	testMetrics := []storage.Metrics{
+		{ID: "metric1", MType: "gauge", Value: float64Ptr(10.5)},
+		{ID: "metric2", MType: "counter", Delta: int64Ptr(5)},
+		// Добавьте нужные метрики для тестирования
+	}
+
+	// Преобразование тестовых данных в JSON
+	jsonData, err := json.Marshal(testMetrics)
+	assert.NoError(t, err)
+
+	req, err := http.NewRequest("POST", "/update-metrics/", bytes.NewBuffer(jsonData))
+	assert.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	handler.UpdateMetricsJSON(w, req)
+
+	// Проверка статуса ответа
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	// Проверка тела ответа
+	var responseMetrics []storage.Metrics
+	err = json.Unmarshal(w.Body.Bytes(), &responseMetrics)
+	assert.NoError(t, err)
+
+	// Добавьте проверки для ожидаемых значений в ответе
+	assert.ElementsMatch(t, testMetrics, responseMetrics)
+}
+
+// Вспомогательная функция для создания указателя на float64
+func float64Ptr(value float64) *float64 {
+	return &value
+}
+
+// Вспомогательная функция для создания указателя на int64
+func int64Ptr(value int64) *int64 {
+	return &value
 }
