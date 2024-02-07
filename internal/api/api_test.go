@@ -3,11 +3,12 @@ package api
 import (
 	"bytes"
 	"context"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 
 	"github.com/SerjZimmer/devops/internal/storage"
 

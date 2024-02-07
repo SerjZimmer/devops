@@ -18,13 +18,10 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var (
-	server       *http.Server
-	shutdownChan = make(chan struct{})
-)
-
 // main является функцией точки входа в приложение сервера.
 func main() {
+
+	printBuildInfo()
 
 	c := config.New()
 	st := storage.NewMetricsStorage(c.Storage)

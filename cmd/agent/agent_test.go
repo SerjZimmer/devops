@@ -146,3 +146,19 @@ func TestDoReq(t *testing.T) {
 	// Вызов функции doReq
 	doReq(testData, contentType, path, config)
 }
+
+func TestGetOrDefault(t *testing.T) {
+	testCases := []struct {
+		value        string
+		defaultValue string
+		expected     string
+	}{
+		{"value", "defaultValue", "value"},
+		{"", "defaultValue", "defaultValue"},
+	}
+
+	for _, tc := range testCases {
+		result := getOrDefault(tc.value, tc.defaultValue)
+		assert.Equal(t, tc.expected, result, "Unexpected result for value=%s, defaultValue=%s", tc.value, tc.defaultValue)
+	}
+}
