@@ -30,3 +30,12 @@ git fetch template && git checkout template/main .github
 При мёрже ветки с инкрементом в основную ветку `main` будут запускаться все автотесты.
 
 Подробнее про локальный и автоматический запуск читайте в [README автотестов](https://github.com/Yandex-Practicum/go-autotests).
+
+
+
+- `CRYPTO_KEY`: Path to the crypto key file (public key for agent, private key for server).
+- `ADDRESS`: Address of the server.
+- `POLL_INTERVAL`: Interval for polling metrics.
+- `REPORT_INTERVAL`: Interval for reporting metrics.
+- `KEY`: API Key for authentication.
+- `RATE_LIMIT`: Rate limit value.

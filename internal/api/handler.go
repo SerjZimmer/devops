@@ -1,9 +1,9 @@
 package api
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"strings"
@@ -215,44 +215,34 @@ func (s *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// UpdateMetricJSON обрабатывает HTTP POST-запрос для обновления значения метрики из тела запроса в формате JSON.
-func (s *Handler) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	var m storage.Metrics
-	buf := bytes.NewBuffer(make([]byte, 0, 1028))
-
-	_, err := buf.ReadFrom(r.Body)
+// UpdateMetricJSON обрабатывает запрос на обновление метрики.
+func (h *Handler) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "Ошибка при разборе r.Body", http.StatusBadRequest)
+		http.Error(w, "Failed to read request body", http.StatusBadRequest)
 		return
 	}
-	r.Body.Close()
+	defer r.Body.Close()
 
-	decoder := json.NewDecoder(buf)
-	if err := decoder.Decode(&m); err != nil {
-		http.Error(w, "Ошибка при разборе JSON", http.StatusBadRequest)
-		return
-	}
-
-	if !isValidMetrics(m) {
-		http.Error(w, "Некорректные данные в JSON", http.StatusBadRequest)
-		return
-	}
-	err = s.stor.UpdateMetricValue(m)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+	if h.CryptoKey != nil {
+		decryptedBody, err := decryptMessage(h.CryptoKey, body)
+		if err != nil {
+			http.Error(w, "Failed to decrypt message", http.StatusInternalServerError)
+			return
+		}
+		body = decryptedBody
 	}
 
-	jsonResponse, err := json.Marshal(m)
-	if err != nil {
-		http.Error(w, "Ошибка при сериализации JSON", http.StatusInternalServerError)
+	var metric storage.Metric
+	if err := json.Unmarshal(body, &metric); err != nil {
+		http.Error(w, "Failed to parse JSON", http.StatusBadRequest)
 		return
 	}
+
+	// Обработка метрики
+	h.Storage.SaveMetric(&metric)
+
 	w.WriteHeader(http.StatusOK)
-	w.Write(jsonResponse)
-
 }
 
 // UpdateMetricsJSON обрабатывает HTTP POST-запрос для обновления значений множества метрик из тела запроса в формате JSON.

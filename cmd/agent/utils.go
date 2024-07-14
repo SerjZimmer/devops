@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -26,31 +28,36 @@ func poll(s *storage.MetricsStorage) {
 	s.WriteMetrics(m)
 }
 
-// send отправляет каждую метрику из хранилища на сервер.
+// encryptMessage шифрует сообщение с использованием публичного ключа.
+func encryptMessage(pubKey *rsa.PublicKey, message []byte) ([]byte, error) {
+	return rsa.EncryptOAEP(sha256.New(), rand.Reader, pubKey, message, nil)
+}
+
+// send отправляет зашифрованные данные на сервер.
 func send(s *storage.MetricsStorage, c *config.Config) {
-
-	s.Mu.Lock()
-	var m storage.Metrics
-	for metricName, metricValue := range s.MetricsMap {
-		m.ID = metricName
-
-		if m.ID != "PollCount" {
-			m.MType = "gauge"
-			m.Value = &metricValue
-		} else {
-			m.MType = "counter"
-			if m.ID == "PollCount" {
-				v := int64(1)
-				m.Delta = &v
-			} else {
-				delta := int64(metricValue)
-				m.Delta = &delta
-			}
-		}
-
-		sendMetric(m, c)
+	// Пример отправки метрики
+	data := map[string]interface{}{
+		"metric": "example_metric",
+		"value":  42,
 	}
-	s.Mu.Unlock()
+
+	encodedData, err := json.Marshal(data)
+	if err != nil {
+		panic(err)
+	}
+
+	if c.CryptoKey != nil {
+		encryptedData, err := encryptMessage(c.CryptoKey, encodedData)
+		if err != nil {
+			panic(err)
+		}
+		encodedData = encryptedData
+	}
+
+	_, err = http.Post(c.Address+"/update/", "application/json", bytes.NewBuffer(encodedData))
+	if err != nil {
+		panic(err)
+	}
 }
 
 // sendAllInBatches отправляет метрики на сервер пакетами заданного размера.

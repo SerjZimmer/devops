@@ -1,16 +1,35 @@
 package api
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"html/template"
 	"net/http"
 	"strconv"
 
 	"github.com/SerjZimmer/devops/internal/storage"
-	"go.uber.org/zap"
 )
+
+// Handler представляет обработчик HTTP-запросов.
+type Handler struct {
+	store     *storage.MetricsStorage
+	CryptoKey *rsa.PrivateKey
+}
+
+// NewHandler создает новый экземпляр Handler.
+func NewHandler(storage *storage.MetricsStorage, cryptoKey *rsa.PrivateKey) *Handler {
+	return &Handler{
+		store:     storage,
+		CryptoKey: cryptoKey,
+	}
+}
+
+// decryptMessage дешифрует сообщение с использованием приватного ключа.
+func decryptMessage(privKey *rsa.PrivateKey, ciphertext []byte) ([]byte, error) {
+	return rsa.DecryptOAEP(sha256.New(), rand.Reader, privKey, ciphertext, nil)
+}
 
 // metricsListTemplate - HTML-шаблон для представления списка метрик.
 const metricsListTemplate = `
@@ -69,29 +88,8 @@ func calculateHash(data string) string {
 	return hash
 }
 
-// Handler представляет обработчик HTTP-запросов для взаимодействия с метриками.
-type Handler struct {
-	stor   metricsStorage
-	logger *zap.Logger
-}
-
 // responseWriterWithStatus представляет ResponseWriter с поддержкой хранения HTTP-статуса.
 type responseWriterWithStatus struct {
 	http.ResponseWriter
 	status int
-}
-
-// NewHandler создает новый экземпляр обработчика HTTP-запросов.
-func NewHandler(stor metricsStorage) *Handler {
-	config := zap.NewProductionConfig()
-	config.Level = zap.NewAtomicLevelAt(zap.InfoLevel)
-
-	logger, err := config.Build()
-	if err != nil {
-		panic(fmt.Sprintf("failed to create logger: %v", err))
-	}
-	return &Handler{
-		stor:   stor,
-		logger: logger,
-	}
 }

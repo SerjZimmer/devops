@@ -1,7 +1,12 @@
 package agent
 
 import (
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
+	"errors"
 	"flag"
+	"io/ioutil"
 	"os"
 	"strconv"
 
@@ -16,6 +21,7 @@ type Config struct {
 	Storage        *storage.Config
 	Key            string
 	RateLimit      int
+	CryptoKey      *rsa.PublicKey
 }
 
 // New создает новый экземпляр конфигурации с значениями по умолчанию или из переменных окружения и флагов командной строки.
@@ -31,6 +37,8 @@ func New() *Config {
 		RateLimit:      getEnvAsInt("RATE_LIMIT", 1),
 	}
 
+	cryptoKeyPath := getEnv("CRYPTO_KEY", "")
+	flag.StringVar(&cryptoKeyPath, "crypto-key", getEnv("CRYPTO_KEY", ""), "Path to the public crypto key")
 	flag.StringVar(&config.Address, "a", getEnv("ADDRESS", "localhost:8080"), "Address of the HTTP server endpoint")
 	flag.IntVar(&config.ReportInterval, "r", getEnvAsInt("REPORT_INTERVAL", 10), "Frequency of sending metrics to the server")
 	flag.IntVar(&config.PollInterval, "p", getEnvAsInt("POLL_INTERVAL", 2), "Frequency of polling metrics from the runtime package")
@@ -38,7 +46,33 @@ func New() *Config {
 	flag.IntVar(&config.RateLimit, "l", getEnvAsInt("RATE_LIMIT", 1), "Rate limit value")
 
 	flag.Parse()
+
+	if cryptoKeyPath != "" {
+		pubKey, err := loadPublicKey(cryptoKeyPath)
+		if err != nil {
+			panic(err)
+		}
+		config.CryptoKey = pubKey
+	}
+
 	return config
+}
+
+// loadPublicKey загружает публичный ключ из файла.
+func loadPublicKey(path string) (*rsa.PublicKey, error) {
+	keyData, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	block, _ := pem.Decode(keyData)
+	if block == nil || block.Type != "PUBLIC KEY" {
+		return nil, errors.New("failed to decode PEM block containing public key")
+	}
+	pubKey, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	return pubKey.(*rsa.PublicKey), nil
 }
 
 // getEnv возвращает значение переменной окружения или значение по умолчанию, если переменная не установлена.
@@ -50,7 +84,7 @@ func getEnv(key, defaultValue string) string {
 	return defaultValue
 }
 
-// getEnvAsInt возвращает значение переменной окружения в виде целого числа или значение по умолчанию, если переменная не установлена
+// getEnvAsInt возвращает значение переменной окружения в виде целого числа или значение по умолчанию, если переменная не установлена.
 func getEnvAsInt(key string, defaultValue int) int {
 	valueStr := getEnv(key, "")
 	if valueStr != "" {
